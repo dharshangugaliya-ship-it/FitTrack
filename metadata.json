@@ -1,0 +1,6 @@
+{
+  "name": "FITTRACK — Fitness Challenge & Verification Platform",
+  "description": "Nationwide fitness participation and challenge platform with multi-tier verification layer for Challengers and Organizers.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
