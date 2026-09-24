@@ -303,6 +303,7 @@ export interface ChallengerDashboardStats {
   activeChallengesCount: number;
   completedChallengesCount: number;
   currentStreak: number;
+  longestStreak?: number;
   hasActiveStreak: boolean;
   totalVerifiedSessions: number;
   source: 'supabase' | 'fallback';

@@ -8,6 +8,7 @@ import { useRouter } from '../../routes/RouterContext';
 import { useAuth } from '../../context/AuthContext';
 import { useFittrackPoints } from '../../hooks/useFittrackPoints';
 import { pointsService } from '../../services/pointsService';
+import { streakService } from '../../services/streakService';
 import { POINTS_RULES } from '../../data/mockData';
 import {
   Award,
@@ -129,7 +130,8 @@ export const PointsHistoryView: React.FC = () => {
             referenceId: `ai_sess_${now}`,
             description: 'Computer-vision verified workout session: SQUATS (30 clean reps, 98% form score) (+20 pts)',
           });
-          setFeedbackMsg('Awarded +20 pts for AI-Verified Workout!');
+          await streakService.recordActivity(effectiveUserId);
+          setFeedbackMsg('Awarded +20 pts for AI-Verified Workout & updated streak!');
           break;
 
         case 'Organizer-Approved Activity':
@@ -142,7 +144,8 @@ export const PointsHistoryView: React.FC = () => {
             referenceId: `org_appr_${now}`,
             description: 'Organizer certified activity proof: 5.2 km GPS route (+20 pts)',
           });
-          setFeedbackMsg('Awarded +20 pts for Organizer-Approved Activity!');
+          await streakService.recordActivity(effectiveUserId);
+          setFeedbackMsg('Awarded +20 pts for Organizer-Approved Activity & updated streak!');
           break;
 
         case 'Self-Reported Activity':
@@ -155,7 +158,8 @@ export const PointsHistoryView: React.FC = () => {
             referenceId: `self_rep_${now}`,
             description: 'Self-reported activity: 60s Plank Hold without automated computer-vision (+5 pts)',
           });
-          setFeedbackMsg('Awarded +5 pts for Self-Reported Activity!');
+          await streakService.recordActivity(effectiveUserId);
+          setFeedbackMsg('Awarded +5 pts for Self-Reported Activity & updated streak!');
           break;
 
         case 'Daily Target Completed':
@@ -179,7 +183,8 @@ export const PointsHistoryView: React.FC = () => {
             referenceId: `streak_7d_${now}`,
             description: 'Bonus awarded for 7 consecutive days of verified activity (+50 pts)',
           });
-          setFeedbackMsg('Awarded +50 pts for 7-Day Streak Bonus!');
+          streakService.boostStreak(effectiveUserId, 7);
+          setFeedbackMsg('Awarded +50 pts & verified 7-Day Consistency Streak!');
           break;
 
         case 'Challenge Completed':

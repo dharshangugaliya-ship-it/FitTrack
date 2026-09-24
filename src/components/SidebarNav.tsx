@@ -17,6 +17,8 @@ import {
   Flame,
   Plus,
   Coins,
+  Utensils,
+  Layers,
 } from 'lucide-react';
 
 interface SidebarNavProps {
@@ -59,6 +61,16 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ onCloseMobile }) => {
       icon: CheckSquare,
     },
     {
+      label: 'Nutrition Tracker',
+      path: '/nutrition',
+      icon: Utensils,
+    },
+    {
+      label: 'Browse Nutrition Plans',
+      path: '/nutrition/plans',
+      icon: Layers,
+    },
+    {
       label: 'FITTRACK Points',
       path: '/points',
       icon: Coins,
@@ -95,6 +107,16 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ onCloseMobile }) => {
       label: 'Manage Challenges',
       path: '/organizer/challenges',
       icon: Sliders,
+    },
+    {
+      label: 'Create Nutrition Plan',
+      path: '/organizer/nutrition/create',
+      icon: PlusCircle,
+    },
+    {
+      label: 'Nutrition Plans',
+      path: '/organizer/nutrition',
+      icon: Utensils,
     },
     {
       label: 'Review Submissions',

@@ -8,6 +8,7 @@ import { useRouter } from '../../routes/RouterContext';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { useChallenges } from '../../hooks/useChallenges';
+import { useNutrition } from '../../hooks/useNutrition';
 import { StatsCard } from '../../components/StatsCard';
 import { ChallengeCard } from '../../components/ChallengeCard';
 import {
@@ -15,6 +16,7 @@ import {
   Award,
   Trophy,
   CheckCircle2,
+  Circle,
   Compass,
   ArrowRight,
   Plus,
@@ -23,6 +25,8 @@ import {
   Coins,
   ShieldCheck,
   Calendar,
+  Utensils,
+  Clock,
 } from 'lucide-react';
 
 export const ChallengerDashboardView: React.FC = () => {
@@ -36,6 +40,7 @@ export const ChallengerDashboardView: React.FC = () => {
     totalPoints,
     totalVerifiedSessions,
     currentStreak,
+    longestStreak,
     hasActiveStreak,
     loading,
     error,
@@ -44,6 +49,7 @@ export const ChallengerDashboardView: React.FC = () => {
   } = useDashboardData();
 
   const { challenges: allChallenges } = useChallenges();
+  const { activePlan, adherence, toggleMeal, isMealCompletedToday } = useNutrition();
   const recommendedChallenges = allChallenges.filter((c) => !c.isEnrolled).slice(0, 3);
 
   const displayName = profile?.display_name || (user?.user_metadata as any)?.display_name || 'Aarav Sharma';
@@ -160,13 +166,107 @@ export const ChallengerDashboardView: React.FC = () => {
         <StatsCard
           title="Current Streak"
           value={`${currentStreak} Days`}
-          subtitle={hasActiveStreak ? `${totalVerifiedSessions} verified sessions` : 'No verified sessions yet'}
+          subtitle={hasActiveStreak ? `${totalVerifiedSessions} verified sessions • Best: ${longestStreak || currentStreak}d` : 'No verified sessions yet'}
           icon={Flame}
           iconColor="text-amber-400"
           badgeText={hasActiveStreak ? 'Active 🔥' : '0 Streak'}
           badgeType={hasActiveStreak ? 'accent' : 'neutral'}
         />
       </div>
+
+      {/* NUTRITION COUNTER & ADHERENCE MODULE (Independent System) */}
+      {activePlan && (
+        <div className="rounded-3xl bg-[#121722] border border-white/8 p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Utensils className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs uppercase font-bold text-emerald-400 tracking-wider">
+                  Today's Nutrition Counter
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
+                  Independent Tracking
+                </span>
+              </div>
+              <h3 className="text-lg font-black text-white">{activePlan.title}</h3>
+              <p className="text-xs text-slate-400">
+                {activePlan.dietType.replace('_', ' ')} • Daily Target: {activePlan.targetCalories.toLocaleString()} kcal (P:{activePlan.targetProtein}g • C:{activePlan.targetCarbs}g • F:{activePlan.targetFat}g)
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/nutrition/plans')}
+                className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+              >
+                Switch Plan
+              </button>
+              <button
+                onClick={() => navigate('/nutrition')}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-4 py-2 text-xs font-bold text-emerald-400 transition-colors cursor-pointer"
+              >
+                <span>Full Meal Tracker</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+            {/* Adherence Counter Box */}
+            <div className="rounded-2xl bg-black/40 border border-white/6 p-4 text-center md:col-span-1">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">
+                Nutrition Adherence
+              </span>
+              <div className="text-3xl font-black text-white font-mono">
+                {adherence.todayCompletedMeals} / {adherence.todayTotalMeals}
+              </div>
+              <p className="text-[11px] text-emerald-400 font-semibold mt-1">Meals Completed Today</p>
+            </div>
+
+            {/* Quick Meal Checklist */}
+            <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {activePlan.meals.map((meal) => {
+                const isCompleted = isMealCompletedToday(meal.id);
+                return (
+                  <div
+                    key={meal.id}
+                    onClick={() => toggleMeal(activePlan.id, meal.id)}
+                    className={`rounded-2xl border p-3 cursor-pointer transition-all flex flex-col justify-between select-none ${
+                      isCompleted
+                        ? 'bg-emerald-500/10 border-emerald-500/40'
+                        : 'bg-white/3 border-white/6 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-slate-500" />
+                        {meal.scheduleTime}
+                      </span>
+                      <span
+                        className={`font-mono text-xs font-black px-1.5 py-0.5 rounded ${
+                          isCompleted
+                            ? 'text-emerald-400 bg-emerald-500/20'
+                            : 'text-slate-500'
+                        }`}
+                      >
+                        {isCompleted ? '✓' : '○'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className={`text-xs font-bold line-clamp-1 ${isCompleted ? 'text-slate-200' : 'text-white'}`}>
+                        {meal.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        {meal.calories} kcal
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active Enrolled Challenges */}
       <div className="space-y-4">

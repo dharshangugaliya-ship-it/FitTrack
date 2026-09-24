@@ -20,9 +20,13 @@ import { MyChallengesView } from '../views/challenger/MyChallengesView';
 import { PointsHistoryView } from '../views/challenger/PointsHistoryView';
 import { WorkoutSessionView } from '../views/challenger/WorkoutSessionView';
 import { ProfileView } from '../views/challenger/ProfileView';
+import { ActiveNutritionPlanView } from '../views/challenger/ActiveNutritionPlanView';
+import { NutritionCatalogView } from '../views/challenger/NutritionCatalogView';
 import { OrganizerDashboardView } from '../views/organizer/OrganizerDashboardView';
 import { CreateChallengeView } from '../views/organizer/CreateChallengeView';
 import { ManageChallengesView } from '../views/organizer/ManageChallengesView';
+import { ManageNutritionPlansView } from '../views/organizer/ManageNutritionPlansView';
+import { CreateNutritionPlanView } from '../views/organizer/CreateNutritionPlanView';
 import { SubmissionsReviewView } from '../views/organizer/SubmissionsReviewView';
 import { ChallengeAnalyticsView } from '../views/organizer/ChallengeAnalyticsView';
 import { OrganizerProfileView } from '../views/organizer/OrganizerProfileView';
@@ -116,8 +120,20 @@ export const AppShell: React.FC = () => {
     if (currentPath === '/profile') {
       return <ProfileView />;
     }
+    if (currentPath === '/nutrition') {
+      return <ActiveNutritionPlanView />;
+    }
+    if (currentPath === '/nutrition/plans' || currentPath.startsWith('/nutrition/')) {
+      return <NutritionCatalogView />;
+    }
     if (currentPath === '/organizer') {
       return <OrganizerDashboardView />;
+    }
+    if (currentPath === '/organizer/nutrition/create' || currentPath.startsWith('/organizer/nutrition/edit/')) {
+      return <CreateNutritionPlanView />;
+    }
+    if (currentPath === '/organizer/nutrition') {
+      return <ManageNutritionPlansView />;
     }
     if (currentPath === '/organizer/create' || currentPath.startsWith('/organizer/create/')) {
       return <CreateChallengeView />;

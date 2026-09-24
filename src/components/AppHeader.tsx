@@ -2,6 +2,7 @@ import React from 'react';
 import { useRouter } from '../routes/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { useFittrackPoints } from '../hooks/useFittrackPoints';
+import { useStreak } from '../hooks/useStreak';
 import { useTheme } from '../context/ThemeContext';
 import { MOCK_USER, MOCK_ORGANIZER_USER } from '../data/mockData';
 import {
@@ -29,6 +30,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { currentPath, mode, setMode, navigate, setAuthModalOpen } = useRouter();
   const { profile, isAuthenticated, isDemoMode, user } = useAuth();
   const { totalPoints } = useFittrackPoints();
+  const { currentStreak, longestStreak, hasActiveStreak } = useStreak();
   const { theme, currentTheme } = useTheme();
 
   const isOrganizer = mode === 'ORGANIZER';
@@ -102,11 +104,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <div
               onClick={() => navigate('/points')}
               className="hidden sm:flex items-center gap-2 rounded-full bg-[#121722] border border-white/10 hover:border-emerald-500/30 px-3 py-1 text-xs cursor-pointer transition-colors"
-              title="View FITTRACK Points Ledger"
+              title={`Current Daily Streak: ${currentStreak}d (All-time best: ${longestStreak}d)`}
             >
-              <div className="flex items-center gap-1 text-amber-400 font-mono font-bold" title="Current Daily Streak">
-                <Flame className="w-3.5 h-3.5 fill-amber-400" />
-                <span>{defaultUser.currentStreak}d</span>
+              <div
+                className="flex items-center gap-1 text-amber-400 font-mono font-bold"
+                title={`Current Daily Streak: ${currentStreak} days`}
+              >
+                <Flame className={`w-3.5 h-3.5 ${hasActiveStreak ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
+                <span>{currentStreak}d</span>
               </div>
               <span className="h-3 w-px bg-white/10" />
               <div className="flex items-center gap-1 text-emerald-400 font-mono font-bold" title="Total FITTRACK Points">

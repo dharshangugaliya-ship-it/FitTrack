@@ -5,6 +5,7 @@ import { useOrganizerDashboard } from '../../hooks/useOrganizerDashboard';
 import { StatsCard } from '../../components/StatsCard';
 import { VerificationBadge } from '../../components/VerificationBadge';
 import { ParticipantMonitoringModal } from '../../components/ParticipantMonitoringModal';
+import { useNutrition } from '../../hooks/useNutrition';
 import { Challenge } from '../../types';
 import {
   Briefcase,
@@ -20,13 +21,21 @@ import {
   Database,
   RefreshCw,
   ExternalLink,
+  Utensils,
+  Layers,
+  Copy,
 } from 'lucide-react';
 
 export const OrganizerDashboardView: React.FC = () => {
   const { navigate, setMode } = useRouter();
   const { user, profile, isSupabaseConfigured } = useAuth();
   const { stats, recentChallenges, loading, error, source, refetch } = useOrganizerDashboard();
+  const { plans } = useNutrition();
   const [selectedInspectChallenge, setSelectedInspectChallenge] = useState<Challenge | null>(null);
+
+  const publishedNutritionCount = plans.filter((p) => p.status === 'PUBLISHED').length;
+  const draftNutritionCount = plans.filter((p) => p.status === 'DRAFT').length;
+  const totalFollowers = plans.reduce((acc, p) => acc + (p.activeFollowersCount || 0), 0);
 
   const displayName = profile?.display_name || user?.user_metadata?.display_name || 'Organizer';
 
@@ -300,6 +309,113 @@ export const OrganizerDashboardView: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* Nutrition Ecosystem Management Module */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Utensils className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs uppercase font-bold text-emerald-400 tracking-wider">
+                Nutrition Ecosystem Operations
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white">Athlete Nutrition Programs</h2>
+            <p className="text-xs text-slate-400">
+              Create, configure, duplicate, and publish dietary protocols for your athletes.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/organizer/nutrition')}
+              className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3.5 py-2 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+            >
+              Manage All Plans ({plans.length})
+            </button>
+            <button
+              onClick={() => navigate('/organizer/nutrition/create')}
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Nutrition Plan</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Nutrition quick metrics grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-2xl bg-[#121722] border border-white/8 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">
+              Published Programs
+            </span>
+            <div className="text-2xl font-black text-emerald-400 font-mono">
+              {publishedNutritionCount}
+            </div>
+            <p className="text-[11px] text-slate-500">Live across FITTRACK catalog</p>
+          </div>
+
+          <div className="rounded-2xl bg-[#121722] border border-white/8 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider block">
+              Draft Plans
+            </span>
+            <div className="text-2xl font-black text-amber-400 font-mono">
+              {draftNutritionCount}
+            </div>
+            <p className="text-[11px] text-slate-500">Custom meal schedules under preparation</p>
+          </div>
+
+          <div className="rounded-2xl bg-[#121722] border border-white/8 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-cyan-400 tracking-wider block">
+              Active Followers
+            </span>
+            <div className="text-2xl font-black text-cyan-400 font-mono">
+              {totalFollowers.toLocaleString()}
+            </div>
+            <p className="text-[11px] text-slate-500">Athletes logging meal adherence</p>
+          </div>
+        </div>
+
+        {/* Highlighted Plans Showcase */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {plans.slice(0, 3).map((p) => (
+            <div
+              key={p.id}
+              className="rounded-2xl bg-[#121722] border border-white/8 p-4 space-y-3 flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] uppercase font-bold font-mono px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">
+                    {p.dietType.replace('_', ' ')}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded ${
+                      p.status === 'PUBLISHED'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-700/50 text-slate-400'
+                    }`}
+                  >
+                    {p.status}
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white line-clamp-1">{p.title}</h4>
+                <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{p.description}</p>
+              </div>
+
+              <div className="pt-2 border-t border-white/6 flex items-center justify-between text-xs text-slate-400">
+                <span className="font-mono text-white font-bold">{p.targetCalories} kcal</span>
+                <button
+                  onClick={() => navigate('/organizer/nutrition')}
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Configure</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

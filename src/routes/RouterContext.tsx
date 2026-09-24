@@ -31,6 +31,8 @@ export const isProtectedRoute = (path: string): boolean => {
     path === '/points' ||
     path.startsWith('/workout/') ||
     path === '/profile' ||
+    path === '/nutrition' ||
+    path.startsWith('/nutrition') ||
     path === '/organizer' ||
     path.startsWith('/organizer/')
   );

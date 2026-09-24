@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "fittrack",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx src/tests/phase11.test.ts && tsx src/tests/phase12.test.ts"
+    "test": "tsx src/tests/phase11.test.ts && tsx src/tests/phase12.test.ts && tsx src/tests/streak.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

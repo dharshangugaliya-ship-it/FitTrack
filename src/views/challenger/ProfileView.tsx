@@ -3,6 +3,8 @@ import { useRouter } from '../../routes/RouterContext';
 import { useAuth } from '../../context/AuthContext';
 import { useFittrackPoints } from '../../hooks/useFittrackPoints';
 import { useDashboardData } from '../../hooks/useDashboardData';
+import { useStreak } from '../../hooks/useStreak';
+import { useNutrition } from '../../hooks/useNutrition';
 import { profileService } from '../../services/profileService';
 import { MOCK_USER } from '../../data/mockData';
 import { StatsCard } from '../../components/StatsCard';
@@ -24,6 +26,8 @@ import {
   Database,
   Mail,
   Fingerprint,
+  Utensils,
+  ArrowRight,
 } from 'lucide-react';
 
 export const ProfileView: React.FC = () => {
@@ -39,6 +43,8 @@ export const ProfileView: React.FC = () => {
 
   const { totalPoints, events } = useFittrackPoints();
   const { enrolledChallenges } = useDashboardData();
+  const { currentStreak, longestStreak, hasActiveStreak } = useStreak();
+  const { activePlan, adherence, toggleMeal, isMealCompletedToday } = useNutrition();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(profile?.display_name || MOCK_USER.displayName);
@@ -236,12 +242,12 @@ export const ProfileView: React.FC = () => {
         </div>
         <StatsCard
           title="Active Streak"
-          value={`${MOCK_USER.currentStreak} Days`}
-          subtitle="Longest: 14 Days"
+          value={`${currentStreak} Days`}
+          subtitle={`Longest: ${longestStreak} Days`}
           icon={Flame}
           iconColor="text-amber-400"
-          badgeText="Streak"
-          badgeType="accent"
+          badgeText={hasActiveStreak ? 'Active 🔥' : 'Inactive'}
+          badgeType={hasActiveStreak ? 'accent' : 'neutral'}
         />
         <StatsCard
           title="Verified Workouts"
@@ -300,6 +306,74 @@ export const ProfileView: React.FC = () => {
             </div>
             <div className="text-2xl font-black text-white font-mono">2 Sessions</div>
             <p className="text-[11px] text-slate-400 mt-1">Offline manual logs</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nutrition Progress & Adherence Ecosystem */}
+      <div className="rounded-3xl bg-[#121722] border border-white/8 p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Utensils className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs uppercase font-bold text-emerald-400 tracking-wider">
+                Nutrition Progress
+              </span>
+              <span className="text-[10px] font-mono text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                Independent Module
+              </span>
+            </div>
+            <h3 className="text-lg font-black text-white">
+              {activePlan?.title || 'Active Nutrition Plan'}
+            </h3>
+            <p className="text-xs text-slate-400">
+              Dietary consistency tracking • Operates independently from Challenge Leaderboard scores
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/nutrition')}
+            className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3.5 py-2 text-xs font-bold text-emerald-400 transition-colors cursor-pointer self-start sm:self-auto"
+          >
+            <span>Open Meal Tracker</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Nutrition Stats Triad */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="rounded-2xl bg-white/3 border border-white/6 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Today's Adherence</span>
+            <div className="text-2xl font-black text-white font-mono">
+              {adherence.todayCompletedMeals} / {adherence.todayTotalMeals}
+            </div>
+            <span className="text-[11px] text-emerald-400 font-semibold">Meals Completed</span>
+          </div>
+
+          <div className="rounded-2xl bg-white/3 border border-white/6 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Adherence Rate</span>
+            <div className="text-2xl font-black text-cyan-400 font-mono">
+              {adherence.adherenceRate}%
+            </div>
+            <span className="text-[11px] text-slate-400">7-Day Consistency</span>
+          </div>
+
+          <div className="rounded-2xl bg-white/3 border border-white/6 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Nutrition Streak</span>
+            <div className="text-2xl font-black text-amber-400 font-mono">
+              {adherence.currentStreakDays} Days
+            </div>
+            <span className="text-[11px] text-slate-400">Continuous Logging</span>
+          </div>
+
+          <div className="rounded-2xl bg-white/3 border border-white/6 p-4 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Daily Target</span>
+            <div className="text-2xl font-black text-emerald-400 font-mono">
+              {activePlan?.targetCalories || 2500} kcal
+            </div>
+            <span className="text-[11px] text-slate-400">
+              P:{activePlan?.targetProtein || 160}g • C:{activePlan?.targetCarbs || 280}g
+            </span>
           </div>
         </div>
       </div>

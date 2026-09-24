@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from '../routes/RouterContext';
 import { useAuth } from '../context/AuthContext';
+import { streakService } from '../services/streakService';
 import { MOCK_USER, MOCK_ORGANIZER_USER } from '../data/mockData';
 import {
   X,
@@ -448,7 +449,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                         </span>
                       </div>
                       <span className="text-[10px] text-slate-400 block mt-0.5">
-                        {MOCK_USER.totalPoints.toLocaleString()} Points • {MOCK_USER.currentStreak}d Streak
+                        {MOCK_USER.totalPoints.toLocaleString()} Points • {streakService.getStreak('usr_aarav_01').currentStreak}d Streak
                       </span>
                     </div>
                   </div>

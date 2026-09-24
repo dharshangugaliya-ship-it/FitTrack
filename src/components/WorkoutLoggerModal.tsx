@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useRouter } from '../routes/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { pointsService } from '../services/pointsService';
+import { streakService } from '../services/streakService';
 import { ActivityType } from '../types';
 import { VerificationBadge } from './VerificationBadge';
-import { X, CheckCircle2, AlertTriangle, Dumbbell, Calendar, Clock, Award } from 'lucide-react';
+import { X, CheckCircle2, AlertTriangle, Dumbbell, Calendar, Clock, Award, Flame } from 'lucide-react';
 
 interface WorkoutLoggerModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const WorkoutLoggerModal: React.FC<WorkoutLoggerModalProps> = ({
   const [duration, setDuration] = useState<number>(25);
   const [notes, setNotes] = useState<string>('');
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [updatedStreakDays, setUpdatedStreakDays] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -49,6 +51,10 @@ export const WorkoutLoggerModal: React.FC<WorkoutLoggerModalProps> = ({
         measuredValue: metricValue,
         targetUnit: getMetricUnit(activity),
       });
+
+      // Synchronize and update user streak
+      const updatedStreak = await streakService.recordActivity(effectiveUserId);
+      setUpdatedStreakDays(updatedStreak.currentStreak);
 
       pointsService.notifyPointsUpdated();
     } catch (err) {
@@ -116,9 +122,15 @@ export const WorkoutLoggerModal: React.FC<WorkoutLoggerModalProps> = ({
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h4 className="text-lg font-bold text-white">Activity Logged Successfully!</h4>
-            <p className="text-xs text-emerald-300">
-              +5 FITTRACK Points awarded. Your streak has been updated!
-            </p>
+            <div className="flex items-center gap-2 justify-center text-xs text-emerald-300 font-medium">
+              <span>+5 FITTRACK Points awarded.</span>
+              {updatedStreakDays !== null && (
+                <span className="flex items-center gap-1 text-amber-400 font-mono font-bold bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                  <Flame className="w-3 h-3 fill-amber-400" />
+                  {updatedStreakDays}d Streak Active
+                </span>
+              )}
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

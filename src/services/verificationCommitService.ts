@@ -8,6 +8,7 @@ import { ActivityType, VerificationStatus, ChallengeProgress, FittrackPointEvent
 import { MOCK_CHALLENGES } from '../data/mockData';
 import { toDatabaseChallengeId, toFrontendChallengeId, isUuid } from '../lib/challengeIdMap';
 import { pointsService } from './pointsService';
+import { streakService } from './streakService';
 
 export interface VerificationCommitPayload {
   verificationSessionId: string;
@@ -191,6 +192,9 @@ export const verificationCommitService = {
             isNowCompleted: commitData.isCompleted,
             wasCompleted: false,
           });
+
+          // Synchronize athlete consistency streak
+          await streakService.recordActivity(effectiveTargetUserId);
         } catch (peErr) {
           console.warn('Point recording note on commit success:', peErr);
         }
@@ -435,6 +439,9 @@ export const verificationCommitService = {
         completionPoints = officialChallenge.pointsReward || 100;
         pointsAwarded += completionPoints;
       }
+
+      // Synchronize athlete consistency streak
+      await streakService.recordActivity(effectiveTargetUserId);
     } catch (e) {
       console.warn('Failed recording point event in evaluation session:', e);
     }

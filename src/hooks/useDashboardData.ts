@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { challengeService } from '../services/challengeService';
 import { pointsService } from '../services/pointsService';
+import { streakService } from '../services/streakService';
 import { Challenge, FittrackPointEvent } from '../types';
 
 export function useDashboardData() {
@@ -16,6 +17,7 @@ export function useDashboardData() {
   const [enrolledChallenges, setEnrolledChallenges] = useState<Challenge[]>([]);
   const [pointEvents, setPointEvents] = useState<FittrackPointEvent[]>([]);
   const [totalPoints, setTotalPoints] = useState<number>(0);
+  const [streakData, setStreakData] = useState(() => streakService.getStreak(effectiveUserId));
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<'supabase' | 'fallback'>('fallback');
@@ -48,6 +50,7 @@ export function useDashboardData() {
       setEnrolledChallenges(challengesRes.challenges || []);
       setPointEvents(pointsRes.events || []);
       setTotalPoints(pointsRes.totalPoints || 0);
+      setStreakData(streakService.getStreak(effectiveUserId));
       setSource(challengesRes.source === 'supabase' && pointsRes.source === 'supabase' ? 'supabase' : 'fallback');
     } catch (err: any) {
       console.error('Error in useDashboardData:', err);
@@ -60,17 +63,20 @@ export function useDashboardData() {
   useEffect(() => {
     fetchDashboardData();
 
-    const handlePointsUpdate = () => {
+    const handleDataUpdate = () => {
+      setStreakData(streakService.getStreak(effectiveUserId));
       fetchDashboardData();
     };
 
-    window.addEventListener('fittrack_points_updated', handlePointsUpdate);
-    window.addEventListener('storage', handlePointsUpdate);
+    window.addEventListener('fittrack_points_updated', handleDataUpdate);
+    window.addEventListener('fittrack_streak_updated', handleDataUpdate);
+    window.addEventListener('storage', handleDataUpdate);
     return () => {
-      window.removeEventListener('fittrack_points_updated', handlePointsUpdate);
-      window.removeEventListener('storage', handlePointsUpdate);
+      window.removeEventListener('fittrack_points_updated', handleDataUpdate);
+      window.removeEventListener('fittrack_streak_updated', handleDataUpdate);
+      window.removeEventListener('storage', handleDataUpdate);
     };
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, effectiveUserId]);
 
   // Derive counts
   const activeChallenges = enrolledChallenges.filter((c) => c.status === 'ACTIVE' || c.status === 'PUBLISHED');
@@ -79,15 +85,11 @@ export function useDashboardData() {
     return c.status === 'COMPLETED' || isTargetMet;
   });
 
-  // Calculate streak from point events or verified activity records
-  // Only genuine activity records count towards a streak; if none, streak is 0
+  // Calculate verified sessions from point events
   const verifiedPointEvents = pointEvents.filter((e) =>
     e.eventType === 'AI_VERIFIED' || e.eventType === 'ORGANIZER_APPROVED'
   );
   const totalVerifiedSessions = verifiedPointEvents.length;
-  // A streak exists only if there are continuous verified sessions across days
-  const hasActiveStreak = totalVerifiedSessions > 0;
-  const currentStreak = hasActiveStreak ? Math.min(totalVerifiedSessions, 7) : 0;
 
   return {
     enrolledChallenges,
@@ -99,8 +101,9 @@ export function useDashboardData() {
     recentPointEvents: pointEvents.slice(0, 5),
     totalPoints,
     totalVerifiedSessions,
-    currentStreak,
-    hasActiveStreak,
+    currentStreak: streakData.currentStreak,
+    longestStreak: streakData.longestStreak,
+    hasActiveStreak: streakData.hasActiveStreak,
     loading,
     error,
     source,
