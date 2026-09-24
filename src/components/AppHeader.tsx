@@ -2,6 +2,7 @@ import React from 'react';
 import { useRouter } from '../routes/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { useFittrackPoints } from '../hooks/useFittrackPoints';
+import { useTheme } from '../context/ThemeContext';
 import { MOCK_USER, MOCK_ORGANIZER_USER } from '../data/mockData';
 import {
   Flame,
@@ -13,6 +14,7 @@ import {
   X,
   LogIn,
   User,
+  Palette,
 } from 'lucide-react';
 
 interface AppHeaderProps {
@@ -27,6 +29,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { currentPath, mode, setMode, navigate, setAuthModalOpen } = useRouter();
   const { profile, isAuthenticated, isDemoMode, user } = useAuth();
   const { totalPoints } = useFittrackPoints();
+  const { theme, currentTheme } = useTheme();
 
   const isOrganizer = mode === 'ORGANIZER';
   const defaultUser = isOrganizer ? MOCK_ORGANIZER_USER : MOCK_USER;
@@ -112,6 +115,21 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </div>
             </div>
           )}
+
+          {/* Theme Quick Indicator Pill */}
+          <button
+            onClick={() => navigate(isOrganizer ? '/organizer/profile' : '/profile')}
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/8 transition-all hover:border-white/16 shadow-xs cursor-pointer"
+            title={`Active Theme: ${currentTheme.name} (${currentTheme.tagline}). Click to customize visual identity.`}
+          >
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: currentTheme.accentColor }}
+            />
+            <span className="text-[11px] font-mono text-slate-300 hidden md:inline">
+              {currentTheme.name}
+            </span>
+          </button>
 
           {/* Two-Way Mode Switcher Pill */}
           {isAuthenticated && (

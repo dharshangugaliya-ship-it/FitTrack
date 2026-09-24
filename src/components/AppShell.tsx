@@ -25,6 +25,7 @@ import { CreateChallengeView } from '../views/organizer/CreateChallengeView';
 import { ManageChallengesView } from '../views/organizer/ManageChallengesView';
 import { SubmissionsReviewView } from '../views/organizer/SubmissionsReviewView';
 import { ChallengeAnalyticsView } from '../views/organizer/ChallengeAnalyticsView';
+import { OrganizerProfileView } from '../views/organizer/OrganizerProfileView';
 import { challengeService } from '../services/challengeService';
 import { Challenge } from '../types';
 
@@ -129,6 +130,9 @@ export const AppShell: React.FC = () => {
     }
     if (currentPath.startsWith('/organizer/analytics/')) {
       return <ChallengeAnalyticsView />;
+    }
+    if (currentPath === '/organizer/profile' || currentPath === '/organizer/settings') {
+      return <OrganizerProfileView />;
     }
 
     // Default fallback

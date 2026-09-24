@@ -6,6 +6,7 @@ import { useDashboardData } from '../../hooks/useDashboardData';
 import { profileService } from '../../services/profileService';
 import { MOCK_USER } from '../../data/mockData';
 import { StatsCard } from '../../components/StatsCard';
+import { ThemeSelector } from '../../components/ThemeSelector';
 import {
   Flame,
   Award,
@@ -257,6 +258,9 @@ export const ProfileView: React.FC = () => {
           iconColor="text-indigo-400"
         />
       </div>
+
+      {/* Visual Identity & Theme Personalization */}
+      <ThemeSelector contextName="Athlete" />
 
       {/* Verification Breakdown */}
       <div className="rounded-3xl bg-[#121722] border border-white/8 p-6 space-y-4">

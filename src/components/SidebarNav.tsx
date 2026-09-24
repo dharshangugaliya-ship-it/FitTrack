@@ -107,6 +107,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ onCloseMobile }) => {
       path: '/organizer/analytics/ch-squat-10k',
       icon: BarChart3,
     },
+    {
+      label: 'Organizer Profile',
+      path: '/organizer/profile',
+      icon: User,
+    },
   ];
 
   const currentLinks = isOrganizer ? organizerLinks : challengerLinks;
