@@ -8,6 +8,7 @@ import { useRouter } from '../../routes/RouterContext';
 import { useAuth } from '../../context/AuthContext';
 import { challengeService } from '../../services/challengeService';
 import { verificationCommitService, VerificationCommitData } from '../../services/verificationCommitService';
+import { pointsService } from '../../services/pointsService';
 import { Challenge, VerificationContext } from '../../types';
 import { useCameraVerification } from '../../hooks/useCameraVerification';
 import { SquatVerificationProcessor, SquatProcessorMetrics } from '../../services/verification/SquatVerificationProcessor';
@@ -183,6 +184,7 @@ export const WorkoutSessionView: React.FC = () => {
           verificationMethod: 'AI_VERIFIED',
           measuredValue: res.measuredValue,
           durationSeconds: res.durationSeconds || durationSeconds || 0,
+          userId: user?.id || (isDemoMode ? 'usr_aarav_01' : 'usr_aarav_01'),
           clientMetadata: {
             clientTimestamp: new Date().toISOString(),
             targetUnit: challenge.targetUnit,
@@ -194,6 +196,7 @@ export const WorkoutSessionView: React.FC = () => {
         setCommitSource(commitRes.source);
         if (commitRes.success && commitRes.data) {
           setCommitResult(commitRes.data);
+          pointsService.notifyPointsUpdated();
         } else {
           setCommitError(commitRes.error || 'Server rejected verification session commit.');
         }

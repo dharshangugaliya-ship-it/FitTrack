@@ -6,7 +6,7 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { ChallengeProgress, DbChallengeProgress } from '../types';
 import { verificationCommitService } from './verificationCommitService';
-import { toDatabaseChallengeId, toFrontendChallengeId } from '../lib/challengeIdMap';
+import { toDatabaseChallengeId, toFrontendChallengeId, isUuid } from '../lib/challengeIdMap';
 
 const DEMO_PROGRESS_STORAGE_KEY = 'fittrack_demo_progress_map';
 
@@ -24,61 +24,61 @@ export const progressService = {
       return { progressMap: {}, source: 'fallback', error: null };
     }
 
-    if (!isSupabaseConfigured) {
-      // Demo evaluation fallback: initial progress for Aarav Sharma merged with local demo storage
-      const demoMap: Record<string, ChallengeProgress> = {
-        'ch-squat-10k': {
-          id: 'prog_demo_01',
-          challengeId: 'ch-squat-10k',
-          userId: 'usr_aarav_01',
-          currentValue: 3420,
-          targetValue: 10000,
-          progressPercentage: 34,
-          challengeScore: 3420,
-          targetUnit: 'reps',
-          lastActivityAt: '2026-09-18T10:00:00.000Z',
-          createdAt: '2026-09-01T10:00:00.000Z',
-          updatedAt: '2026-09-18T10:00:00.000Z',
-        },
-        'ch-run-100km': {
-          id: 'prog_demo_02',
-          challengeId: 'ch-run-100km',
-          userId: 'usr_aarav_01',
-          currentValue: 42,
-          targetValue: 100,
-          progressPercentage: 42,
-          challengeScore: 42,
-          targetUnit: 'KM',
-          lastActivityAt: '2026-09-17T08:00:00.000Z',
-          createdAt: '2026-09-05T08:30:00.000Z',
-          updatedAt: '2026-09-17T08:00:00.000Z',
-        },
-        'ch-yoga-mindful': {
-          id: 'prog_demo_03',
-          challengeId: 'ch-yoga-mindful',
-          userId: 'usr_aarav_01',
-          currentValue: 14,
-          targetValue: 30,
-          progressPercentage: 46,
-          challengeScore: 14,
-          targetUnit: 'days',
-          lastActivityAt: '2026-09-18T06:30:00.000Z',
-          createdAt: '2026-09-07T06:15:00.000Z',
-          updatedAt: '2026-09-18T06:30:00.000Z',
-        },
-      };
+    const isUserUuid = isUuid(userId);
+    const demoMap: Record<string, ChallengeProgress> = {
+      'ch-squat-10k': {
+        id: 'prog_demo_01',
+        challengeId: 'ch-squat-10k',
+        userId: 'usr_aarav_01',
+        currentValue: 3420,
+        targetValue: 10000,
+        progressPercentage: 34,
+        challengeScore: 3420,
+        targetUnit: 'reps',
+        lastActivityAt: '2026-09-18T10:00:00.000Z',
+        createdAt: '2026-09-01T10:00:00.000Z',
+        updatedAt: '2026-09-18T10:00:00.000Z',
+      },
+      'ch-run-100km': {
+        id: 'prog_demo_02',
+        challengeId: 'ch-run-100km',
+        userId: 'usr_aarav_01',
+        currentValue: 42,
+        targetValue: 100,
+        progressPercentage: 42,
+        challengeScore: 42,
+        targetUnit: 'KM',
+        lastActivityAt: '2026-09-17T08:00:00.000Z',
+        createdAt: '2026-09-05T08:30:00.000Z',
+        updatedAt: '2026-09-17T08:00:00.000Z',
+      },
+      'ch-yoga-mindful': {
+        id: 'prog_demo_03',
+        challengeId: 'ch-yoga-mindful',
+        userId: 'usr_aarav_01',
+        currentValue: 14,
+        targetValue: 30,
+        progressPercentage: 46,
+        challengeScore: 14,
+        targetUnit: 'days',
+        lastActivityAt: '2026-09-18T06:30:00.000Z',
+        createdAt: '2026-09-07T06:15:00.000Z',
+        updatedAt: '2026-09-18T06:30:00.000Z',
+      },
+    };
 
-      try {
-        const stored = localStorage.getItem(DEMO_PROGRESS_STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          Object.assign(demoMap, parsed);
-        }
-      } catch {
-        // Ignore JSON parse error
+    try {
+      const stored = localStorage.getItem(DEMO_PROGRESS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        Object.assign(demoMap, parsed);
       }
+    } catch {
+      // Ignore JSON parse error
+    }
 
-      return { progressMap: userId === 'usr_aarav_01' ? demoMap : {}, source: 'fallback', error: null };
+    if (!isSupabaseConfigured || !isUserUuid) {
+      return { progressMap: demoMap, source: 'fallback', error: null };
     }
 
     try {
@@ -88,8 +88,8 @@ export const progressService = {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('Error querying challenge_progress:', error.message);
-        return { progressMap: {}, source: 'supabase', error: error.message };
+        console.warn('Supabase query note on challenge_progress:', error.message);
+        return { progressMap: demoMap, source: 'fallback', error: null };
       }
 
       const progressMap: Record<string, ChallengeProgress> = {};

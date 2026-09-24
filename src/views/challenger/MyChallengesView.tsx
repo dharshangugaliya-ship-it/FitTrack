@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useMyChallenges } from '../../hooks/useChallenges';
 import { challengeService } from '../../services/challengeService';
 import { VerificationBadge } from '../../components/VerificationBadge';
+import { Challenge } from '../../types';
 import {
   Trophy,
   CheckSquare,
@@ -22,6 +23,8 @@ import {
   Compass,
   CheckCircle2,
   Coins,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 
 export const MyChallengesView: React.FC = () => {
@@ -32,6 +35,8 @@ export const MyChallengesView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'COMPLETED'>('ACTIVE');
   const [leavingId, setLeavingId] = useState<string | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [leaveSuccess, setLeaveSuccess] = useState<string | null>(null);
+  const [challengeToLeave, setChallengeToLeave] = useState<Challenge | null>(null);
 
   const activeChallenges = enrolledChallenges.filter(
     (c) => c.status === 'ACTIVE' || c.status === 'PUBLISHED'
@@ -43,24 +48,31 @@ export const MyChallengesView: React.FC = () => {
 
   const displayedChallenges = activeTab === 'ACTIVE' ? activeChallenges : completedChallenges;
 
-  const handleLeave = async (challengeId: string) => {
+  const handleInitiateLeave = (challenge: Challenge) => {
+    setLeaveError(null);
+    setLeaveSuccess(null);
+    setChallengeToLeave(challenge);
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!challengeToLeave) return;
     const effectiveUserId = user?.id || (isDemoMode ? 'usr_aarav_01' : null);
     if (!effectiveUserId) return;
 
-    const confirmed = window.confirm('Are you sure you want to withdraw from this challenge?');
-    if (!confirmed) return;
-
-    setLeavingId(challengeId);
+    const targetChallenge = challengeToLeave;
+    setLeavingId(targetChallenge.id);
     setLeaveError(null);
     try {
-      const res = await challengeService.leaveChallenge(challengeId, effectiveUserId);
+      const res = await challengeService.leaveChallenge(targetChallenge.id, effectiveUserId);
       if (!res.success) {
-        setLeaveError(res.error || 'Failed to withdraw from challenge.');
+        setLeaveError(res.error || 'Failed to withdraw from competition.');
       } else {
+        setChallengeToLeave(null);
+        setLeaveSuccess(`You have successfully withdrawn from "${targetChallenge.title}".`);
         await refetch();
       }
     } catch (err: any) {
-      setLeaveError(err?.message || 'Error withdrawing from challenge.');
+      setLeaveError(err?.message || 'Error withdrawing from competition.');
     } finally {
       setLeavingId(null);
     }
@@ -119,6 +131,21 @@ export const MyChallengesView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {leaveSuccess && (
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-xs text-emerald-300 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{leaveSuccess}</span>
+          </div>
+          <button
+            onClick={() => setLeaveSuccess(null)}
+            className="text-slate-400 hover:text-white text-xs underline ml-4 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {leaveError && (
         <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-xs text-rose-300">
@@ -268,20 +295,22 @@ export const MyChallengesView: React.FC = () => {
                   </button>
                   {activeTab === 'ACTIVE' && (
                     <button
-                      onClick={() => handleLeave(challenge.id)}
+                      onClick={() => handleInitiateLeave(challenge)}
                       disabled={leavingId === challenge.id}
-                      className="rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/30 border border-white/8 p-2 text-slate-400 transition-colors cursor-pointer"
-                      title="Leave challenge"
+                      className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 hover:border-rose-500/50 px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                      title="Leave this competition"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Leave</span>
                     </button>
                   )}
                   <button
                     onClick={() => navigate(`/workout/${challenge.id}`)}
                     className="flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all active:scale-95 shadow-md shadow-emerald-500/20 cursor-pointer"
+                    title="Launch workout session"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Start Workout</span>
+                    <span>Launch Workout</span>
                   </button>
                 </div>
               </div>
@@ -312,6 +341,112 @@ export const MyChallengesView: React.FC = () => {
           >
             Discover Challenges
           </button>
+        </div>
+      )}
+
+      {/* Leave Competition Confirmation Modal */}
+      {challengeToLeave && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !leavingId) {
+              setChallengeToLeave(null);
+            }
+          }}
+        >
+          <div className="relative w-full max-w-md rounded-3xl bg-[#121722] border border-rose-500/30 shadow-2xl p-6 sm:p-7 space-y-5 text-left">
+            {/* Close button */}
+            <button
+              onClick={() => !leavingId && setChallengeToLeave(null)}
+              disabled={Boolean(leavingId)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white rounded-lg p-1.5 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-rose-400">
+                  Confirmation Required
+                </span>
+                <h3 className="text-lg font-bold text-white leading-tight">
+                  Leave Competition?
+                </h3>
+              </div>
+            </div>
+
+            {/* Challenge Summary */}
+            <div className="flex items-center gap-3.5 rounded-2xl bg-white/4 border border-white/8 p-3">
+              <img
+                src={challengeToLeave.bannerUrl}
+                alt={challengeToLeave.title}
+                className="w-12 h-12 rounded-xl object-cover ring-1 ring-white/10 shrink-0"
+              />
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-white/8 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                    {challengeToLeave.type.replace('_', ' ')}
+                  </span>
+                  <span className="text-xs font-mono text-emerald-400 font-bold">
+                    +{challengeToLeave.pointsReward} pts
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white truncate">
+                  {challengeToLeave.title}
+                </h4>
+                <p className="text-xs text-slate-400 font-mono truncate">
+                  Target: {challengeToLeave.targetValue.toLocaleString()} {challengeToLeave.targetUnit}
+                </p>
+              </div>
+            </div>
+
+            {/* Warning Details */}
+            <div className="rounded-2xl bg-rose-500/10 border border-rose-500/20 p-3.5 space-y-2 text-xs">
+              <p className="text-slate-300 leading-relaxed">
+                Are you sure you want to withdraw from <strong className="text-white">"{challengeToLeave.title}"</strong>?
+              </p>
+              <ul className="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
+                <li>You will be removed from this competition and active tracker.</li>
+                <li>Your previously completed workout records remain saved in activity logs.</li>
+                <li>You can re-enroll at any time from Discover Challenges.</li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setChallengeToLeave(null)}
+                disabled={Boolean(leavingId)}
+                className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel & Stay Enrolled
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLeave}
+                disabled={Boolean(leavingId)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white shadow-lg shadow-rose-600/25 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {leavingId === challengeToLeave.id ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Leaving...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Confirm & Leave</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

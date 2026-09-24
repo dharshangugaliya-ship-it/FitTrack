@@ -94,8 +94,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         {/* Right Controls */}
         <div className="flex items-center gap-3">
-          {/* Challenger Stats Pill (Visible in Challenger mode when authenticated) */}
-          {!isOrganizer && isAuthenticated && (
+          {/* Challenger Stats Pill (Visible in Challenger mode) */}
+          {!isOrganizer && (
             <div
               onClick={() => navigate('/points')}
               className="hidden sm:flex items-center gap-2 rounded-full bg-[#121722] border border-white/10 hover:border-emerald-500/30 px-3 py-1 text-xs cursor-pointer transition-colors"

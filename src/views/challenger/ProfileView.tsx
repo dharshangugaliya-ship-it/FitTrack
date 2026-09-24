@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useRouter } from '../../routes/RouterContext';
 import { useAuth } from '../../context/AuthContext';
+import { useFittrackPoints } from '../../hooks/useFittrackPoints';
+import { useDashboardData } from '../../hooks/useDashboardData';
 import { profileService } from '../../services/profileService';
 import { MOCK_USER } from '../../data/mockData';
 import { StatsCard } from '../../components/StatsCard';
@@ -34,6 +36,9 @@ export const ProfileView: React.FC = () => {
     refreshProfile,
   } = useAuth();
 
+  const { totalPoints, events } = useFittrackPoints();
+  const { enrolledChallenges } = useDashboardData();
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(profile?.display_name || MOCK_USER.displayName);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -43,6 +48,14 @@ export const ProfileView: React.FC = () => {
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : MOCK_USER.joinedDate;
+
+  // Real-time calculated verified workouts and enrolled metrics
+  const verifiedWorkoutsCount = events.filter(
+    (e) => e.eventType === 'AI_VERIFIED' || e.eventType === 'ORGANIZER_APPROVED'
+  ).length;
+  const displayPoints = totalPoints > 0 ? totalPoints : MOCK_USER.totalPoints;
+  const displayVerifiedWorkouts = verifiedWorkoutsCount > 0 ? verifiedWorkoutsCount : (MOCK_USER.verifiedWorkoutsCount ?? 14);
+  const displayEnrolledCount = enrolledChallenges.length > 0 ? enrolledChallenges.length : (MOCK_USER.challengesEnrolledCount ?? 4);
 
   const handleSaveName = async () => {
     if (!editedName.trim() || editedName === displayName) {
@@ -206,14 +219,20 @@ export const ProfileView: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="FITTRACK Points"
-          value={MOCK_USER.totalPoints.toLocaleString()}
-          subtitle="Top 3% Nationwide"
-          icon={Award}
-          iconColor="text-emerald-400"
-          badgeText="Verified"
-        />
+        <div
+          onClick={() => navigate('/points')}
+          className="cursor-pointer transition-transform hover:-translate-y-0.5"
+          title="Click to view FITTRACK Points Ledger"
+        >
+          <StatsCard
+            title="FITTRACK Points"
+            value={displayPoints.toLocaleString()}
+            subtitle="Top 3% Nationwide • View Ledger"
+            icon={Award}
+            iconColor="text-emerald-400"
+            badgeText="Live Synced"
+          />
+        </div>
         <StatsCard
           title="Active Streak"
           value={`${MOCK_USER.currentStreak} Days`}
@@ -225,15 +244,15 @@ export const ProfileView: React.FC = () => {
         />
         <StatsCard
           title="Verified Workouts"
-          value={MOCK_USER.verifiedWorkoutsCount ?? MOCK_USER.verifiedActivities}
+          value={displayVerifiedWorkouts}
           subtitle="Computer Vision & GPS"
           icon={CheckCircle2}
           iconColor="text-cyan-400"
         />
         <StatsCard
           title="Enrolled Challenges"
-          value={MOCK_USER.challengesEnrolledCount ?? MOCK_USER.activeChallenges}
-          subtitle="3 In-progress"
+          value={displayEnrolledCount}
+          subtitle="Active & In-progress"
           icon={Trophy}
           iconColor="text-indigo-400"
         />

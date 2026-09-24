@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from '../../routes/RouterContext';
+import { useAuth } from '../../context/AuthContext';
+import { pointsService } from '../../services/pointsService';
 import { MOCK_SUBMISSIONS } from '../../data/mockData';
 import { Submission } from '../../types';
 import { VerificationBadge } from '../../components/VerificationBadge';
@@ -16,16 +18,47 @@ import {
 } from 'lucide-react';
 
 export const SubmissionsReviewView: React.FC = () => {
+  const { user } = useAuth();
   const [submissions, setSubmissions] = useState<Submission[]>(MOCK_SUBMISSIONS);
   const [filter, setFilter] = useState<'PENDING' | 'APPROVED' | 'ALL'>('PENDING');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  const handleApprove = (id: string, name: string) => {
+  const handleApprove = async (id: string, name: string) => {
+    const sub = submissions.find((s) => s.id === id);
     setSubmissions((prev) =>
-      prev.map((sub) => (sub.id === id ? { ...sub, status: 'APPROVED' as const } : sub))
+      prev.map((s) => (s.id === id ? { ...s, status: 'APPROVED' as const } : s))
     );
-    setActionSuccess(`Submission by ${name} approved. +20 Points awarded.`);
-    setTimeout(() => setActionSuccess(null), 3000);
+
+    if (sub) {
+      try {
+        await pointsService.recordOrganizerApprovedPointEvent(
+          sub.userId,
+          sub.challengeId,
+          sub.challengeTitle,
+          sub.activity,
+          sub.score,
+          sub.targetUnit,
+          sub.id
+        );
+
+        // Also credit the active athlete persona so that approving in organizer mode is directly testable in challenger ledger
+        const activeUserId = user?.id || 'usr_aarav_01';
+        await pointsService.recordOrganizerApprovedPointEvent(
+          activeUserId,
+          sub.challengeId,
+          sub.challengeTitle,
+          sub.activity,
+          sub.score,
+          sub.targetUnit,
+          `review_${sub.id}`
+        );
+      } catch (err) {
+        console.warn('Failed recording organizer approved points:', err);
+      }
+    }
+
+    setActionSuccess(`Submission by ${name} approved. +20 Points certified and synced to ledger.`);
+    setTimeout(() => setActionSuccess(null), 3500);
   };
 
   const handleReject = (id: string, name: string) => {

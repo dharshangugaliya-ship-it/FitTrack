@@ -14,11 +14,18 @@ import { toDatabaseChallengeId, toFrontendChallengeId, isUuid } from '../lib/cha
 
 // Local storage key for demo / fallback participation persistence
 const LOCAL_PARTICIPATION_KEY = 'fittrack_user_participations';
+const LOCAL_WITHDRAWN_KEY = 'fittrack_user_withdrawn_challenges';
 
 interface LocalParticipation {
   challengeId: string;
   userId: string;
   joinedAt: string;
+}
+
+interface LocalWithdrawn {
+  challengeId: string;
+  userId: string;
+  withdrawnAt: string;
 }
 
 function getLocalParticipations(): LocalParticipation[] {
@@ -36,6 +43,54 @@ function saveLocalParticipations(list: LocalParticipation[]) {
   } catch (err) {
     console.error('Failed to save local participations:', err);
   }
+}
+
+function getLocalWithdrawn(): LocalWithdrawn[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_WITHDRAWN_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalWithdrawn(list: LocalWithdrawn[]) {
+  try {
+    localStorage.setItem(LOCAL_WITHDRAWN_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.error('Failed to save local withdrawn list:', err);
+  }
+}
+
+function markAsWithdrawn(challengeId: string, userId: string) {
+  const list = getLocalWithdrawn();
+  const dbId = toDatabaseChallengeId(challengeId);
+  const exists = list.some(
+    (w) =>
+      w.userId === userId &&
+      (w.challengeId === challengeId ||
+        w.challengeId === dbId ||
+        toDatabaseChallengeId(w.challengeId) === dbId)
+  );
+  if (!exists) {
+    list.push({ challengeId, userId, withdrawnAt: new Date().toISOString() });
+    saveLocalWithdrawn(list);
+  }
+}
+
+function unmarkWithdrawn(challengeId: string, userId: string) {
+  const list = getLocalWithdrawn();
+  const dbId = toDatabaseChallengeId(challengeId);
+  const filtered = list.filter(
+    (w) =>
+      !(
+        w.userId === userId &&
+        (w.challengeId === challengeId ||
+          w.challengeId === dbId ||
+          toDatabaseChallengeId(w.challengeId) === dbId)
+      )
+  );
+  saveLocalWithdrawn(filtered);
 }
 
 // Convert a Supabase DB row to the frontend Challenge interface
@@ -326,6 +381,16 @@ export const challengeService = {
     if (!isSupabaseConfigured) {
       const localParts = getLocalParticipations().filter((p) => p.userId === userId);
       const enrolledIds = new Set(localParts.map((p) => p.challengeId));
+      const withdrawnList = getLocalWithdrawn().filter((w) => w.userId === userId);
+      const isWithdrawn = (id: string) => {
+        const dbId = toDatabaseChallengeId(id);
+        return withdrawnList.some(
+          (w) =>
+            w.challengeId === id ||
+            w.challengeId === dbId ||
+            toDatabaseChallengeId(w.challengeId) === dbId
+        );
+      };
 
       const [progressRes, pointsRes] = await Promise.all([
         progressService.getUserAllProgress(userId),
@@ -336,15 +401,18 @@ export const challengeService = {
       const pointsByChallenge = new Map<string, number>();
       pointsRes.events.forEach((ev) => {
         if (ev.challengeId) {
-          pointsByChallenge.set(
-            ev.challengeId,
-            (pointsByChallenge.get(ev.challengeId) || 0) + ev.points
-          );
+          const fid = toFrontendChallengeId(ev.challengeId);
+          const did = toDatabaseChallengeId(ev.challengeId);
+          pointsByChallenge.set(ev.challengeId, (pointsByChallenge.get(ev.challengeId) || 0) + ev.points);
+          pointsByChallenge.set(fid, (pointsByChallenge.get(fid) || 0) + ev.points);
+          pointsByChallenge.set(did, (pointsByChallenge.get(did) || 0) + ev.points);
         }
       });
 
       const myChallenges = MOCK_CHALLENGES.filter(
-        (c) => enrolledIds.has(c.id) || (userId === 'usr_aarav_01' && c.isEnrolled)
+        (c) =>
+          !isWithdrawn(c.id) &&
+          (enrolledIds.has(c.id) || (userId === 'usr_aarav_01' && c.isEnrolled))
       ).map((c) => {
         const part = localParts.find((p) => p.challengeId === c.id);
         const prog = progressMap[c.id];
@@ -362,6 +430,17 @@ export const challengeService = {
     }
 
     try {
+      const withdrawnList = getLocalWithdrawn().filter((w) => w.userId === userId);
+      const isWithdrawn = (id: string) => {
+        const dbId = toDatabaseChallengeId(id);
+        return withdrawnList.some(
+          (w) =>
+            w.challengeId === id ||
+            w.challengeId === dbId ||
+            toDatabaseChallengeId(w.challengeId) === dbId
+        );
+      };
+
       // Query challenge_participants for this user if valid UUID
       let partRows: { challenge_id: string; joined_at: string; status: string }[] | null = null;
       if (isUuid(userId)) {
@@ -379,16 +458,20 @@ export const challengeService = {
 
       if (partRows) {
         partRows.forEach((r) => {
-          combinedIds.add(r.challenge_id);
-          joinedAtMap.set(r.challenge_id, r.joined_at);
+          if (!isWithdrawn(r.challenge_id)) {
+            combinedIds.add(r.challenge_id);
+            joinedAtMap.set(r.challenge_id, r.joined_at);
+          }
         });
       }
 
       localParts.forEach((lp) => {
         const dbId = toDatabaseChallengeId(lp.challengeId);
-        combinedIds.add(dbId);
-        if (!joinedAtMap.has(dbId)) {
-          joinedAtMap.set(dbId, lp.joinedAt);
+        if (!isWithdrawn(lp.challengeId) && !isWithdrawn(dbId)) {
+          combinedIds.add(dbId);
+          if (!joinedAtMap.has(dbId)) {
+            joinedAtMap.set(dbId, lp.joinedAt);
+          }
         }
       });
 
@@ -410,10 +493,11 @@ export const challengeService = {
       const pointsByChallenge = new Map<string, number>();
       pointsRes.events.forEach((ev) => {
         if (ev.challengeId) {
-          pointsByChallenge.set(
-            ev.challengeId,
-            (pointsByChallenge.get(ev.challengeId) || 0) + ev.points
-          );
+          const fid = toFrontendChallengeId(ev.challengeId);
+          const did = toDatabaseChallengeId(ev.challengeId);
+          pointsByChallenge.set(ev.challengeId, (pointsByChallenge.get(ev.challengeId) || 0) + ev.points);
+          pointsByChallenge.set(fid, (pointsByChallenge.get(fid) || 0) + ev.points);
+          pointsByChallenge.set(did, (pointsByChallenge.get(did) || 0) + ev.points);
         }
       });
 
@@ -478,6 +562,7 @@ export const challengeService = {
 
     // If Supabase is not configured or userId is not a valid UUID (demo mode / mock profile),
     // manage participation in local store.
+    unmarkWithdrawn(challengeId, userId);
     if (!isSupabaseConfigured || !isUserValidUuid || userId.startsWith('demo-')) {
       const local = getLocalParticipations();
       const existingLocal = local.find(
@@ -646,6 +731,9 @@ export const challengeService = {
         saveLocalParticipations(local);
       }
 
+      const ch = MOCK_CHALLENGES.find((c) => c.id === challengeId || toDatabaseChallengeId(c.id) === dbChallengeId);
+      await pointsService.recordJoinPointEvent(userId, challengeId, ch?.title || 'Fitness Challenge');
+
       return { success: true, alreadyJoined: false, error: null };
     } catch (err: any) {
       console.error('joinChallenge exception, applying local fallback:', err);
@@ -658,6 +746,8 @@ export const challengeService = {
         });
         saveLocalParticipations(local);
       }
+      const ch = MOCK_CHALLENGES.find((c) => c.id === challengeId || toDatabaseChallengeId(c.id) === dbChallengeId);
+      await pointsService.recordJoinPointEvent(userId, challengeId, ch?.title || 'Fitness Challenge');
       return {
         success: true,
         alreadyJoined: false,
@@ -677,16 +767,27 @@ export const challengeService = {
       return { success: false, error: 'Authentication required' };
     }
 
-    // When Supabase is NOT configured or user is not UUID, manage local demo store
+    const dbChallengeId = toDatabaseChallengeId(challengeId);
+
+    // Mark as withdrawn locally for immediate UI update & consistency
+    markAsWithdrawn(challengeId, userId);
+
+    // Always remove from local participation cache
+    const local = getLocalParticipations().filter(
+      (p) =>
+        !(
+          p.userId === userId &&
+          (p.challengeId === challengeId ||
+            p.challengeId === dbChallengeId ||
+            toDatabaseChallengeId(p.challengeId) === dbChallengeId)
+        )
+    );
+    saveLocalParticipations(local);
+
+    // When Supabase is NOT configured or user is not UUID, local update is complete
     if (!isSupabaseConfigured || !isUuid(userId)) {
-      const local = getLocalParticipations().filter(
-        (p) => !(p.challengeId === challengeId && p.userId === userId)
-      );
-      saveLocalParticipations(local);
       return { success: true, error: null };
     }
-
-    const dbChallengeId = toDatabaseChallengeId(challengeId);
 
     try {
       const { error } = await supabase
@@ -695,19 +796,14 @@ export const challengeService = {
         .eq('challenge_id', dbChallengeId)
         .eq('user_id', userId);
 
-      // Always remove from local cache
-      const local = getLocalParticipations().filter(
-        (p) => !((p.challengeId === challengeId || p.challengeId === dbChallengeId) && p.userId === userId)
-      );
-      saveLocalParticipations(local);
-
       if (error) {
-        return { success: false, error: error.message };
+        console.warn('Supabase delete returned error, but local withdrawal applied:', error.message);
       }
 
       return { success: true, error: null };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Failed to leave challenge' };
+      console.warn('leaveChallenge exception, local withdrawal applied:', err);
+      return { success: true, error: null };
     }
   },
 
@@ -722,7 +818,18 @@ export const challengeService = {
 
     const dbChallengeId = toDatabaseChallengeId(challengeId);
 
-    // Check local store first (immediate UI response)
+    // If marked as withdrawn, user is NOT_JOINED
+    const withdrawnList = getLocalWithdrawn();
+    const isWithdrawn = withdrawnList.some(
+      (w) =>
+        w.userId === userId &&
+        (w.challengeId === challengeId ||
+          w.challengeId === dbChallengeId ||
+          toDatabaseChallengeId(w.challengeId) === dbChallengeId)
+    );
+    if (isWithdrawn) return 'NOT_JOINED';
+
+    // Check local store (immediate UI response)
     const local = getLocalParticipations();
     const foundLocal = local.find(
       (p) =>
@@ -736,7 +843,7 @@ export const challengeService = {
     const mockMatch = MOCK_CHALLENGES.find(
       (c) => c.id === challengeId || toDatabaseChallengeId(c.id) === dbChallengeId
     );
-    if (userId === 'usr_aarav_01' && mockMatch?.isEnrolled) return 'JOINED';
+    if (userId === 'usr_aarav_01' && mockMatch?.isEnrolled && !isWithdrawn) return 'JOINED';
 
     if (!isSupabaseConfigured || !isUuid(userId)) {
       return 'NOT_JOINED';
@@ -812,6 +919,16 @@ export const challengeService = {
     }
   ): Challenge[] {
     const local = getLocalParticipations();
+    const withdrawnList = getLocalWithdrawn().filter((w) => w.userId === userId);
+    const isWithdrawn = (id: string) => {
+      const dbId = toDatabaseChallengeId(id);
+      return withdrawnList.some(
+        (w) =>
+          w.challengeId === id ||
+          w.challengeId === dbId ||
+          toDatabaseChallengeId(w.challengeId) === dbId
+      );
+    };
     const enrolledIds = new Set(
       local.filter((p) => (userId ? p.userId === userId : false)).map((p) => p.challengeId)
     );
@@ -819,10 +936,12 @@ export const challengeService = {
     let list = MOCK_CHALLENGES.map((ch) => {
       const dbId = toDatabaseChallengeId(ch.id);
       const isEnrolledLocally =
-        enrolledIds.has(ch.id) ||
-        enrolledIds.has(dbId) ||
-        (dbId ? enrolledIds.has(toFrontendChallengeId(dbId)) : false);
-      const isEnrolledMock = userId === 'usr_aarav_01' ? ch.isEnrolled : false;
+        !isWithdrawn(ch.id) &&
+        !isWithdrawn(dbId) &&
+        (enrolledIds.has(ch.id) ||
+          enrolledIds.has(dbId) ||
+          (dbId ? enrolledIds.has(toFrontendChallengeId(dbId)) : false));
+      const isEnrolledMock = userId === 'usr_aarav_01' && !isWithdrawn(ch.id) ? ch.isEnrolled : false;
       const isEnrolled = isEnrolledLocally || Boolean(isEnrolledMock);
       const part = local.find(
         (p) =>

@@ -10,7 +10,7 @@ import { FittrackPointEvent } from '../types';
 
 export function useFittrackPoints() {
   const { user, isDemoMode } = useAuth();
-  const effectiveUserId = user?.id || (isDemoMode ? 'usr_aarav_01' : null);
+  const effectiveUserId = user?.id || (isDemoMode ? 'usr_aarav_01' : 'usr_aarav_01');
 
   const [events, setEvents] = useState<FittrackPointEvent[]>([]);
   const [totalPoints, setTotalPoints] = useState<number>(0);
@@ -43,6 +43,17 @@ export function useFittrackPoints() {
 
   useEffect(() => {
     fetchPoints();
+
+    const handlePointsUpdate = () => {
+      fetchPoints();
+    };
+
+    window.addEventListener('fittrack_points_updated', handlePointsUpdate);
+    window.addEventListener('storage', handlePointsUpdate);
+    return () => {
+      window.removeEventListener('fittrack_points_updated', handlePointsUpdate);
+      window.removeEventListener('storage', handlePointsUpdate);
+    };
   }, [fetchPoints]);
 
   return {

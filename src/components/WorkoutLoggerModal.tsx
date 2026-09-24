@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from '../routes/RouterContext';
+import { useAuth } from '../context/AuthContext';
+import { pointsService } from '../services/pointsService';
 import { ActivityType } from '../types';
 import { VerificationBadge } from './VerificationBadge';
 import { X, CheckCircle2, AlertTriangle, Dumbbell, Calendar, Clock, Award } from 'lucide-react';
@@ -13,6 +15,7 @@ export const WorkoutLoggerModal: React.FC<WorkoutLoggerModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { user, isDemoMode } = useAuth();
   const [activity, setActivity] = useState<ActivityType>('SQUATS');
   const [metricValue, setMetricValue] = useState<number>(50);
   const [duration, setDuration] = useState<number>(25);
@@ -21,9 +24,37 @@ export const WorkoutLoggerModal: React.FC<WorkoutLoggerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
+
+    const effectiveUserId = user?.id || (isDemoMode ? 'usr_aarav_01' : 'usr_aarav_01');
+    try {
+      await pointsService.recordSelfReportedPointEvent(
+        effectiveUserId,
+        null,
+        'Physical Activity',
+        activity,
+        metricValue,
+        getMetricUnit(activity),
+        duration
+      );
+
+      // Check secondary rules like daily target completion (+15 pts) and streak (+50 pts)
+      await pointsService.evaluateAndAwardSecondaryRules({
+        userId: effectiveUserId,
+        challengeId: 'manual_log',
+        challengeTitle: `${activity} Workout`,
+        activity,
+        measuredValue: metricValue,
+        targetUnit: getMetricUnit(activity),
+      });
+
+      pointsService.notifyPointsUpdated();
+    } catch (err) {
+      console.warn('Failed recording self-reported points:', err);
+    }
+
     setTimeout(() => {
       setSubmitted(false);
       onClose();

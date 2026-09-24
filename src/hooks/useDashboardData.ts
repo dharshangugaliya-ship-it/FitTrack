@@ -11,7 +11,7 @@ import { Challenge, FittrackPointEvent } from '../types';
 
 export function useDashboardData() {
   const { user, isDemoMode } = useAuth();
-  const effectiveUserId = user?.id || (isDemoMode ? 'usr_aarav_01' : null);
+  const effectiveUserId = user?.id || (isDemoMode ? 'usr_aarav_01' : 'usr_aarav_01');
 
   const [enrolledChallenges, setEnrolledChallenges] = useState<Challenge[]>([]);
   const [pointEvents, setPointEvents] = useState<FittrackPointEvent[]>([]);
@@ -59,6 +59,17 @@ export function useDashboardData() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const handlePointsUpdate = () => {
+      fetchDashboardData();
+    };
+
+    window.addEventListener('fittrack_points_updated', handlePointsUpdate);
+    window.addEventListener('storage', handlePointsUpdate);
+    return () => {
+      window.removeEventListener('fittrack_points_updated', handlePointsUpdate);
+      window.removeEventListener('storage', handlePointsUpdate);
+    };
   }, [fetchDashboardData]);
 
   // Derive counts
