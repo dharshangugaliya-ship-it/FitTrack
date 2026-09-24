@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Award, Target, Flame, ArrowLeft, ShieldCheck, Database } from 'lucide-react';
+import { Award, Target, Flame, ArrowLeft, ShieldCheck, Database, Play, Sparkles } from 'lucide-react';
 import { Challenge } from '../../types';
 import { VerificationBadge } from '../VerificationBadge';
 
@@ -12,12 +12,14 @@ interface VerificationChallengeHeaderProps {
   challenge: Challenge;
   dataSource: 'supabase' | 'fallback';
   onBack: () => void;
+  onWatchDemo?: () => void;
 }
 
 export const VerificationChallengeHeader: React.FC<VerificationChallengeHeaderProps> = ({
   challenge,
   dataSource,
   onBack,
+  onWatchDemo,
 }) => {
   return (
     <div className="space-y-3 border-b border-white/8 pb-4">
@@ -68,8 +70,20 @@ export const VerificationChallengeHeader: React.FC<VerificationChallengeHeaderPr
           </p>
         </div>
 
-        {/* Right Metric Box */}
+        {/* Right Action & Metric Box */}
         <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+          {onWatchDemo && (
+            <button
+              type="button"
+              onClick={onWatchDemo}
+              className="flex items-center gap-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 px-3.5 py-2 text-xs font-bold text-cyan-300 hover:text-white transition-all cursor-pointer shadow-sm"
+              title="Watch 3D Human Hologram exercise demonstration"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>AI Hologram Demo</span>
+            </button>
+          )}
+
           <div className="rounded-xl bg-white/3 border border-white/8 px-3.5 py-2 text-right">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Reward Pool</span>
             <span className="text-sm font-black text-amber-400 font-mono">

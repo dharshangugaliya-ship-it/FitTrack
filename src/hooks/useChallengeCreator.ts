@@ -151,6 +151,9 @@ export function useChallengeCreator(draftId?: string) {
             difficulty: ch.difficulty,
             pointsReward: ch.pointsReward,
             bannerUrl: ch.bannerUrl || DEFAULT_FORM_DATA.bannerUrl,
+            demoVideoUrl: ch.demoVideoUrl,
+            demoVideoType: ch.demoVideoType || (ch.demoVideoUrl ? 'CUSTOM' : 'AI_GENERATED'),
+            formInstructions: ch.formInstructions,
           });
           setHasUnsavedChanges(false);
         }

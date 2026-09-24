@@ -63,6 +63,12 @@ export interface Challenge {
   visibility?: ChallengeVisibility;
   status: ChallengeStatus;
   bannerUrl: string;
+  demoVideoUrl?: string;
+  demoVideoType?: 'CUSTOM' | 'AI_GENERATED';
+  demoVideoPoster?: string;
+  formInstructions?: string[];
+  targetMuscles?: string[];
+  commonMistakes?: string[];
   featured?: boolean;
   isEnrolled?: boolean;
   userProgress?: number;
@@ -89,6 +95,8 @@ export interface DbChallenge {
   points_reward: number;
   difficulty: ChallengeDifficulty;
   banner_url: string | null;
+  demo_video_url?: string | null;
+  demo_video_type?: string | null;
   organizer_name: string;
   organizer_avatar: string | null;
   created_at: string;
@@ -341,6 +349,9 @@ export interface ChallengeFormData {
   difficulty: ChallengeDifficulty;
   pointsReward: number;
   bannerUrl: string;
+  demoVideoUrl?: string;
+  demoVideoType?: 'CUSTOM' | 'AI_GENERATED';
+  formInstructions?: string[];
 }
 
 export interface ChallengeFormErrors {

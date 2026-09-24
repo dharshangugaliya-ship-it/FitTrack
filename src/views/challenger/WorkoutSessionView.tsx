@@ -17,6 +17,7 @@ import { CameraPreview } from '../../components/verification/CameraPreview';
 import { VerificationControls } from '../../components/verification/VerificationControls';
 import { VerificationChallengeHeader } from '../../components/verification/VerificationChallengeHeader';
 import { VerificationRequirementNotice } from '../../components/verification/VerificationRequirementNotice';
+import { ExerciseDemoModal } from '../../components/exercise-demo/ExerciseDemoModal';
 import {
   Camera,
   CheckCircle2,
@@ -33,6 +34,7 @@ import {
   Zap,
   CheckCheck,
   AlertTriangle,
+  Play,
 } from 'lucide-react';
 
 export const WorkoutSessionView: React.FC = () => {
@@ -56,6 +58,9 @@ export const WorkoutSessionView: React.FC = () => {
   const [commitResult, setCommitResult] = useState<VerificationCommitData | null>(null);
   const [commitSource, setCommitSource] = useState<'supabase' | 'demo'>('supabase');
   const [commitError, setCommitError] = useState<string | null>(null);
+
+  // Exercise Demo Video Modal State
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState<boolean>(false);
 
   // Load challenge metadata
   useEffect(() => {
@@ -298,7 +303,47 @@ export const WorkoutSessionView: React.FC = () => {
         challenge={challenge}
         dataSource={dataSource}
         onBack={() => navigate(`/challenges/${challenge.id}`)}
+        onWatchDemo={() => setIsDemoModalOpen(true)}
       />
+
+      {/* Pre-Workout Form Learning Banner (when IDLE) */}
+      {state === 'IDLE' && (
+        <div className="rounded-2xl bg-cyan-950/20 border border-cyan-500/30 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-cyan-950/20">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 shrink-0">
+              <Sparkles className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span>Review 3D Human Hologram Demonstration</span>
+                <span className="text-[10px] text-cyan-400 font-mono font-normal">· 360° Orbit</span>
+              </h4>
+              <p className="text-[11px] text-slate-300">
+                Inspect 3D kinematic movement, knee/spine joint angles, and certified range of motion before activating your camera.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsDemoModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-bold px-4 py-2 text-xs transition-all active:scale-95 cursor-pointer shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Watch Hologram Demo</span>
+            </button>
+            <button
+              type="button"
+              onClick={requestCamera}
+              className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 text-xs transition-colors cursor-pointer shadow-sm"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Enable Camera</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Chamber Body */}
       {state !== 'SUCCESS' ? (
@@ -328,6 +373,7 @@ export const WorkoutSessionView: React.FC = () => {
               onRetryCamera={retryCamera}
               onExit={() => navigate(`/challenges/${challenge.id}`)}
               onReset={handleResetSession}
+              onWatchDemo={() => setIsDemoModalOpen(true)}
             />
           </div>
 
@@ -730,6 +776,22 @@ export const WorkoutSessionView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Exercise Demonstration Video & Biomechanics Modal */}
+      <ExerciseDemoModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        challenge={challenge}
+        activity={challenge?.activity}
+        onLaunchWorkout={() => {
+          setIsDemoModalOpen(false);
+          if (state === 'IDLE') {
+            requestCamera();
+          } else if (state === 'READY') {
+            startSession();
+          }
+        }}
+      />
     </div>
   );
 };

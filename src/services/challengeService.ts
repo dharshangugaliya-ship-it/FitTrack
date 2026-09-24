@@ -131,6 +131,8 @@ function mapDbChallengeToChallenge(
     bannerUrl:
       db.banner_url ||
       'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&auto=format&fit=crop&q=80',
+    demoVideoUrl: db.demo_video_url || undefined,
+    demoVideoType: (db.demo_video_type as any) || (db.demo_video_url ? 'CUSTOM' : 'AI_GENERATED'),
     isEnrolled,
     joinedAt,
     userProgress: isEnrolled ? 0 : undefined, // Phase 3: Joining registers participant status, no fake workout progress

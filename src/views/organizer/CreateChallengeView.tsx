@@ -29,7 +29,9 @@ import {
   Flame,
   Globe,
   Lock,
+  Film,
 } from 'lucide-react';
+import { ExerciseVideoUploader } from '../../components/organizer/ExerciseVideoUploader';
 
 export const CreateChallengeView: React.FC = () => {
   const { navigate, params } = useRouter();
@@ -653,6 +655,21 @@ export const CreateChallengeView: React.FC = () => {
                 })}
               </div>
 
+              {/* Exercise Demonstration Video Section */}
+              <ExerciseVideoUploader
+                activity={formData.activity}
+                videoUrl={formData.demoVideoUrl}
+                videoType={formData.demoVideoType}
+                formInstructions={formData.formInstructions}
+                onChangeVideo={(videoUrl, videoType) => {
+                  updateField('demoVideoUrl', videoUrl);
+                  updateField('demoVideoType', videoType);
+                }}
+                onChangeInstructions={(instructions) => {
+                  updateField('formInstructions', instructions);
+                }}
+              />
+
               {/* Points Reward */}
               <div className="rounded-2xl bg-white/2 border border-white/6 p-5 space-y-3">
                 <div className="flex items-center justify-between">
@@ -773,6 +790,19 @@ export const CreateChallengeView: React.FC = () => {
                     </span>
                     <span>
                       Visibility: <strong className="text-slate-200">{formData.visibility}</strong>
+                    </span>
+                  </div>
+
+                  {/* Demonstration Video Status in Preview */}
+                  <div className="rounded-xl bg-white/3 border border-white/6 p-3 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Film className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span className="text-slate-300">
+                        Exercise Demonstration: <strong className="text-white">{formData.demoVideoType === 'CUSTOM' ? 'Organizer Video Attached' : 'Default AI Model'}</strong>
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      Watch Demo Ready
                     </span>
                   </div>
                 </div>

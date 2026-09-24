@@ -479,6 +479,9 @@ export const organizerService = {
       bannerUrl:
         formData.bannerUrl ||
         'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&auto=format&fit=crop&q=80',
+      demoVideoUrl: formData.demoVideoUrl,
+      demoVideoType: formData.demoVideoType || (formData.demoVideoUrl ? 'CUSTOM' : 'AI_GENERATED'),
+      formInstructions: formData.formInstructions,
     };
 
     const existingIndex = customList.findIndex((c) => c.id === challengeId);

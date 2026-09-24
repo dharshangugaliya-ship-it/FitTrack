@@ -10,6 +10,7 @@ import { useMyChallenges } from '../../hooks/useChallenges';
 import { challengeService } from '../../services/challengeService';
 import { VerificationBadge } from '../../components/VerificationBadge';
 import { Challenge } from '../../types';
+import { ExerciseDemoModal } from '../../components/exercise-demo/ExerciseDemoModal';
 import {
   Trophy,
   CheckSquare,
@@ -37,6 +38,7 @@ export const MyChallengesView: React.FC = () => {
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [leaveSuccess, setLeaveSuccess] = useState<string | null>(null);
   const [challengeToLeave, setChallengeToLeave] = useState<Challenge | null>(null);
+  const [demoModalChallenge, setDemoModalChallenge] = useState<Challenge | null>(null);
 
   const activeChallenges = enrolledChallenges.filter(
     (c) => c.status === 'ACTIVE' || c.status === 'PUBLISHED'
@@ -293,6 +295,14 @@ export const MyChallengesView: React.FC = () => {
                   >
                     Rules & Details
                   </button>
+                  <button
+                    onClick={() => setDemoModalChallenge(challenge)}
+                    className="flex items-center gap-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 px-3.5 py-2 text-xs font-bold text-cyan-200 transition-colors cursor-pointer"
+                    title="Watch 3D Human Hologram exercise demonstration"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>AI Hologram Demo</span>
+                  </button>
                   {activeTab === 'ACTIVE' && (
                     <button
                       onClick={() => handleInitiateLeave(challenge)}
@@ -448,6 +458,21 @@ export const MyChallengesView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Exercise Demonstration Modal */}
+      {demoModalChallenge && (
+        <ExerciseDemoModal
+          isOpen={Boolean(demoModalChallenge)}
+          onClose={() => setDemoModalChallenge(null)}
+          challenge={demoModalChallenge}
+          activity={demoModalChallenge.activity}
+          onLaunchWorkout={() => {
+            const id = demoModalChallenge.id;
+            setDemoModalChallenge(null);
+            navigate(`/workout/${id}`);
+          }}
+        />
       )}
     </div>
   );

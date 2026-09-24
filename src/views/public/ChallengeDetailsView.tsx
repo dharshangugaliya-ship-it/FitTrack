@@ -21,7 +21,9 @@ import {
   ChevronRight,
   Database,
   Trophy,
+  Film,
 } from 'lucide-react';
+import { ExerciseDemoModal } from '../../components/exercise-demo/ExerciseDemoModal';
 
 export const ChallengeDetailsView: React.FC = () => {
   const { currentPath, params, navigate, setAuthModalOpen } = useRouter();
@@ -38,6 +40,7 @@ export const ChallengeDetailsView: React.FC = () => {
   const [isJoining, setIsJoining] = useState<boolean>(false);
   const [joinSuccessNotice, setJoinSuccessNotice] = useState<boolean>(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [showDemoModal, setShowDemoModal] = useState<boolean>(false);
 
   // Load challenge details
   useEffect(() => {
@@ -350,6 +353,35 @@ export const ChallengeDetailsView: React.FC = () => {
             </div>
           </div>
 
+          {/* Exercise Technique & Demonstration Section */}
+          <div className="rounded-2xl bg-cyan-950/25 border border-cyan-500/30 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-cyan-950/20">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-cyan-300">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>3D Human Hologram Exercise Demonstration</span>
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    AI Biomechanical Model
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                  Explore 360° holographic form execution, joint angles, depth planes, and key checkpoints before starting.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDemoModal(true)}
+              className="flex items-center gap-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black px-4 py-2.5 text-xs transition-all active:scale-95 shadow-md shadow-cyan-400/25 shrink-0 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+              <span>Watch 3D Hologram Demo</span>
+            </button>
+          </div>
+
           {/* Organizer Card */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-white/3 border border-white/8 p-5">
             <div className="flex items-center gap-4">
@@ -406,9 +438,16 @@ export const ChallengeDetailsView: React.FC = () => {
                 <>
                   <button
                     onClick={() => navigate('/my-challenges')}
-                    className="rounded-xl bg-white/8 hover:bg-white/12 border border-white/10 px-5 py-3 text-xs font-bold text-slate-200 transition-colors cursor-pointer"
+                    className="rounded-xl bg-white/8 hover:bg-white/12 border border-white/10 px-4 py-3 text-xs font-bold text-slate-200 transition-colors cursor-pointer"
                   >
-                    View My Challenges
+                    My Challenges
+                  </button>
+                  <button
+                    onClick={() => setShowDemoModal(true)}
+                    className="flex items-center gap-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 px-4 py-3 text-xs font-bold text-cyan-200 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span>AI Hologram Demo</span>
                   </button>
                   <button
                     onClick={handleStartWorkout}
@@ -426,30 +465,48 @@ export const ChallengeDetailsView: React.FC = () => {
                   Registration Closed
                 </button>
               ) : (
-                <button
-                  onClick={handleJoin}
-                  disabled={isJoining}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-500 px-7 py-3 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all active:scale-95 shadow-lg shadow-emerald-500/25 cursor-pointer disabled:opacity-60"
-                >
-                  {isJoining ? (
-                    <>
-                      <Sparkles className="w-4 h-4 animate-spin" />
-                      <span>Joining Challenge...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Join Challenge</span>
-                      <span className="text-[11px] bg-slate-950/20 px-2 py-0.5 rounded-md font-mono">
-                        +{challenge.pointsReward} pts
-                      </span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowDemoModal(true)}
+                    className="flex items-center gap-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 px-4 py-3 text-xs font-bold text-cyan-200 transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>AI Hologram Demo</span>
+                  </button>
+                  <button
+                    onClick={handleJoin}
+                    disabled={isJoining}
+                    className="flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all active:scale-95 shadow-lg shadow-emerald-500/25 cursor-pointer disabled:opacity-60"
+                  >
+                    {isJoining ? (
+                      <>
+                        <Sparkles className="w-4 h-4 animate-spin" />
+                        <span>Joining Challenge...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Join Challenge</span>
+                        <span className="text-[11px] bg-slate-950/20 px-2 py-0.5 rounded-md font-mono">
+                          +{challenge.pointsReward} pts
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Exercise Demonstration Modal */}
+      <ExerciseDemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        challenge={challenge}
+        activity={challenge.activity}
+        onLaunchWorkout={isEnrolled ? handleStartWorkout : undefined}
+      />
     </div>
   );
 };

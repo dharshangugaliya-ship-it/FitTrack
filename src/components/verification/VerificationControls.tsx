@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { VerificationSessionState } from '../../types';
 
@@ -23,6 +24,7 @@ interface VerificationControlsProps {
   onRetryCamera: () => void;
   onExit: () => void;
   onReset: () => void;
+  onWatchDemo?: () => void;
 }
 
 export const VerificationControls: React.FC<VerificationControlsProps> = ({
@@ -33,6 +35,7 @@ export const VerificationControls: React.FC<VerificationControlsProps> = ({
   onRetryCamera,
   onExit,
   onReset,
+  onWatchDemo,
 }) => {
   const isBusy =
     state === 'REQUESTING_PERMISSION' ||
@@ -55,6 +58,20 @@ export const VerificationControls: React.FC<VerificationControlsProps> = ({
 
       {/* Primary Verification Action Group */}
       <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Watch Demo Option (Preparation & Learning Tool - Never activates camera) */}
+        {onWatchDemo && state !== 'ACTIVE' && (
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={onWatchDemo}
+            className="flex items-center gap-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 hover:text-white px-4 py-2.5 text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 shadow-sm"
+            title="Watch 3D human hologram demonstration before starting verification"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>AI Hologram Demo</span>
+          </button>
+        )}
+
         {/* 1. IDLE: Request Camera Access */}
         {state === 'IDLE' && (
           <button
