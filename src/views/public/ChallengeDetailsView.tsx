@@ -200,9 +200,9 @@ export const ChallengeDetailsView: React.FC = () => {
           <img
             src={challenge.bannerUrl}
             alt={challenge.title}
-            className="h-full w-full object-cover opacity-75"
+            className="h-full w-full object-cover opacity-100 brightness-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#121722] via-[#121722]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#121722]/90 via-[#121722]/30 to-transparent pointer-events-none" />
 
           {/* Top Badges */}
           <div className="absolute top-4 left-4 flex items-center gap-2 flex-wrap">

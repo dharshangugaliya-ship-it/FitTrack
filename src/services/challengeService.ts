@@ -8,6 +8,7 @@ import {
   ParticipationStatus,
 } from '../types';
 import { MOCK_CHALLENGES } from '../data/mockData';
+import { getLocalCustomChallenges } from './organizerService';
 import { pointsService } from './pointsService';
 import { progressService } from './progressService';
 import { toDatabaseChallengeId, toFrontendChallengeId, isUuid } from '../lib/challengeIdMap';
@@ -933,7 +934,25 @@ export const challengeService = {
       local.filter((p) => (userId ? p.userId === userId : false)).map((p) => p.challengeId)
     );
 
-    let list = MOCK_CHALLENGES.map((ch) => {
+    const customChallenges = getLocalCustomChallenges().filter(
+      (c) => c.status === 'ACTIVE' || c.status === 'PUBLISHED'
+    );
+    const seenMap = new Set<string>();
+    const combinedBase: Challenge[] = [];
+    for (const c of customChallenges) {
+      if (!seenMap.has(c.id)) {
+        seenMap.add(c.id);
+        combinedBase.push(c);
+      }
+    }
+    for (const c of MOCK_CHALLENGES) {
+      if (!seenMap.has(c.id)) {
+        seenMap.add(c.id);
+        combinedBase.push(c);
+      }
+    }
+
+    let list = combinedBase.map((ch) => {
       const dbId = toDatabaseChallengeId(ch.id);
       const isEnrolledLocally =
         !isWithdrawn(ch.id) &&

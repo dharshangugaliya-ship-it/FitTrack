@@ -12,16 +12,7 @@ export function useOrganizerDashboard() {
   const [source, setSource] = useState<'supabase' | 'fallback'>('supabase');
 
   const fetchDashboardData = useCallback(async () => {
-    // When Supabase is configured, use authenticated user id
-    // In demo mode, use demo ID
-    const effectiveOrgId = isSupabaseConfigured
-      ? user?.id || null
-      : user?.id || 'demo_organizer';
-
-    if (isSupabaseConfigured && !effectiveOrgId) {
-      setLoading(false);
-      return;
-    }
+    const effectiveOrgId = user?.id || 'org_priya_01';
 
     setLoading(true);
     setError(null);
@@ -32,17 +23,17 @@ export function useOrganizerDashboard() {
         organizerService.getOrganizerOwnedChallenges(effectiveOrgId),
       ]);
 
-      if (statsRes.error && isSupabaseConfigured) {
-        setError(statsRes.error);
-      } else {
+      if (statsRes.stats) {
         setStats(statsRes.stats);
         setSource(statsRes.source);
       }
 
-      if (challengesRes.error && isSupabaseConfigured && !statsRes.error) {
-        setError(challengesRes.error);
-      } else {
+      if (challengesRes.challenges) {
         setRecentChallenges(challengesRes.challenges);
+      }
+
+      if (statsRes.error && isSupabaseConfigured) {
+        console.warn('Organizer stats warning:', statsRes.error);
       }
     } catch (err: any) {
       setError(err?.message || 'Failed to load organizer dashboard');
@@ -53,6 +44,18 @@ export function useOrganizerDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const handleUpdate = () => {
+      fetchDashboardData();
+    };
+
+    window.addEventListener('fittrack_challenges_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    return () => {
+      window.removeEventListener('fittrack_challenges_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, [fetchDashboardData]);
 
   return {

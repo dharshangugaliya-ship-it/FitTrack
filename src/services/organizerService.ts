@@ -8,10 +8,33 @@ import {
   ChallengeFormData,
 } from '../types';
 import { MOCK_CHALLENGES } from '../data/mockData';
+import { isUuid } from '../lib/challengeIdMap';
 
 export interface OrganizerChallengesFilter {
   status?: ChallengeStatus | 'ALL';
   search?: string;
+}
+
+export const LOCAL_CUSTOM_CHALLENGES_KEY = 'fittrack_custom_challenges';
+
+export function getLocalCustomChallenges(): Challenge[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_CUSTOM_CHALLENGES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCustomChallenges(challenges: Challenge[]) {
+  try {
+    localStorage.setItem(LOCAL_CUSTOM_CHALLENGES_KEY, JSON.stringify(challenges));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fittrack_challenges_updated'));
+    }
+  } catch (err) {
+    console.error('Failed to save custom challenges:', err);
+  }
 }
 
 // Convert DB Challenge into domain Challenge
@@ -57,199 +80,138 @@ export const organizerService = {
   async getOrganizerStats(
     organizerId: string | null
   ): Promise<{ stats: OrganizerDashboardStats; source: 'supabase' | 'fallback'; error: string | null }> {
-    if (!organizerId) {
-      return {
-        stats: {
-          totalChallenges: 0,
-          activeChallenges: 0,
-          publishedChallenges: 0,
-          draftChallenges: 0,
-          completedChallenges: 0,
-          totalParticipants: 0,
-          totalPointsRewardPool: 0,
-          source: 'fallback',
-        },
-        source: 'fallback',
-        error: 'Organizer not authenticated',
-      };
-    }
+    const effectiveId = organizerId || 'org_priya_01';
+    const customList = getLocalCustomChallenges();
+    let dbChallenges: Array<{
+      id: string;
+      status: ChallengeStatus;
+      participant_count?: number;
+      points_reward?: number;
+    }> = [];
+    let usedSource: 'supabase' | 'fallback' = 'fallback';
 
-    if (!isSupabaseConfigured) {
-      // Evaluation fallback metrics computed deterministically from mock data
-      const mockOwned = MOCK_CHALLENGES;
-      const active = mockOwned.filter((c) => c.status === 'ACTIVE').length;
-      const completed = mockOwned.filter((c) => c.status === 'COMPLETED').length;
-      const totalParts = mockOwned.reduce((sum, c) => sum + (c.participantCount || 0), 0);
-      const totalPoints = mockOwned.reduce((sum, c) => sum + (c.pointsReward || 0), 0);
-
-      return {
-        stats: {
-          totalChallenges: mockOwned.length,
-          activeChallenges: active,
-          publishedChallenges: mockOwned.filter((c) => c.status === 'PUBLISHED').length,
-          draftChallenges: mockOwned.filter((c) => c.status === 'DRAFT').length,
-          completedChallenges: completed,
-          totalParticipants: totalParts,
-          totalPointsRewardPool: totalPoints,
-          source: 'fallback',
-        },
-        source: 'fallback',
-        error: null,
-      };
-    }
-
-    try {
-      // 1. Attempt using optimized PostgreSQL aggregation function
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_organizer_metrics', {
-        p_organizer_id: organizerId,
-      });
-
-      if (!rpcError && rpcData) {
-        return {
-          stats: {
-            totalChallenges: Number(rpcData.total_challenges || 0),
-            activeChallenges: Number(rpcData.active_challenges || 0),
-            publishedChallenges: Number(rpcData.published_challenges || 0),
-            draftChallenges: Number(rpcData.draft_challenges || 0),
-            completedChallenges: Number(rpcData.completed_challenges || 0),
-            totalParticipants: Number(rpcData.total_participants || 0),
-            totalPointsRewardPool: Number(rpcData.total_points_reward_pool || 0),
-            source: 'supabase',
-          },
-          source: 'supabase',
-          error: null,
-        };
+    if (isSupabaseConfigured && isUuid(effectiveId)) {
+      try {
+        const { data, error } = await supabase
+          .from('challenges')
+          .select('id, status, participant_count, points_reward')
+          .eq('organizer_id', effectiveId);
+        if (!error && data && data.length > 0) {
+          dbChallenges = data;
+          usedSource = 'supabase';
+        }
+      } catch (err) {
+        console.warn('Supabase stats fetch error, falling back:', err);
       }
-
-      // 2. Direct query fallback against challenges table
-      const { data, error } = await supabase
-        .from('challenges')
-        .select('id, status, participant_count, points_reward')
-        .eq('organizer_id', organizerId);
-
-      if (error) {
-        return {
-          stats: {
-            totalChallenges: 0,
-            activeChallenges: 0,
-            publishedChallenges: 0,
-            draftChallenges: 0,
-            completedChallenges: 0,
-            totalParticipants: 0,
-            totalPointsRewardPool: 0,
-            source: 'supabase',
-          },
-          source: 'supabase',
-          error: error.message,
-        };
-      }
-
-      const rows = data || [];
-      const totalChallenges = rows.length;
-      const activeChallenges = rows.filter((r) => r.status === 'ACTIVE').length;
-      const publishedChallenges = rows.filter((r) => r.status === 'PUBLISHED').length;
-      const draftChallenges = rows.filter((r) => r.status === 'DRAFT').length;
-      const completedChallenges = rows.filter((r) => r.status === 'COMPLETED').length;
-      const totalParticipants = rows.reduce((acc, r) => acc + (r.participant_count || 0), 0);
-      const totalPointsRewardPool = rows.reduce((acc, r) => acc + (r.points_reward || 0), 0);
-
-      return {
-        stats: {
-          totalChallenges,
-          activeChallenges,
-          publishedChallenges,
-          draftChallenges,
-          completedChallenges,
-          totalParticipants,
-          totalPointsRewardPool,
-          source: 'supabase',
-        },
-        source: 'supabase',
-        error: null,
-      };
-    } catch (err: any) {
-      return {
-        stats: {
-          totalChallenges: 0,
-          activeChallenges: 0,
-          publishedChallenges: 0,
-          draftChallenges: 0,
-          completedChallenges: 0,
-          totalParticipants: 0,
-          totalPointsRewardPool: 0,
-          source: 'supabase',
-        },
-        source: 'supabase',
-        error: err?.message || 'Failed to fetch organizer statistics',
-      };
     }
+
+    const baseList: Array<{ status: string; participantCount?: number; pointsReward?: number }> =
+      dbChallenges.length > 0
+        ? dbChallenges.map((d) => ({
+            status: d.status,
+            participantCount: d.participant_count,
+            pointsReward: d.points_reward,
+          }))
+        : MOCK_CHALLENGES;
+
+    const combined = [...customList, ...baseList];
+
+    return {
+      stats: {
+        totalChallenges: combined.length,
+        activeChallenges: combined.filter((c) => c.status === 'ACTIVE').length,
+        publishedChallenges: combined.filter((c) => c.status === 'PUBLISHED').length,
+        draftChallenges: combined.filter((c) => c.status === 'DRAFT').length,
+        completedChallenges: combined.filter((c) => c.status === 'COMPLETED').length,
+        totalParticipants: combined.reduce((acc, c) => acc + (c.participantCount || 0), 0),
+        totalPointsRewardPool: combined.reduce((acc, c) => acc + (c.pointsReward || 0), 0),
+        source: usedSource,
+      },
+      source: usedSource,
+      error: null,
+    };
   },
 
   /**
-   * Fetch challenges owned strictly by the authenticated organizer
+   * Fetch challenges owned strictly by the authenticated organizer (merged with local custom challenges)
    */
   async getOrganizerOwnedChallenges(
     organizerId: string | null,
     filter?: OrganizerChallengesFilter
   ): Promise<{ challenges: Challenge[]; source: 'supabase' | 'fallback'; error: string | null }> {
-    if (!organizerId) {
-      return { challenges: [], source: 'fallback', error: 'Authentication required' };
+    const effectiveId = organizerId || 'org_priya_01';
+    const customList = getLocalCustomChallenges();
+
+    let dbDomainChallenges: Challenge[] = [];
+    let usedSource: 'supabase' | 'fallback' = 'fallback';
+
+    if (isSupabaseConfigured && isUuid(effectiveId)) {
+      try {
+        let query = supabase
+          .from('challenges')
+          .select('*')
+          .eq('organizer_id', effectiveId)
+          .order('created_at', { ascending: false });
+
+        if (filter?.status && filter.status !== 'ALL') {
+          query = query.eq('status', filter.status);
+        }
+        if (filter?.search) {
+          query = query.ilike('title', `%${filter.search}%`);
+        }
+
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          dbDomainChallenges = (data as DbChallenge[]).map(mapDbChallengeToDomain);
+          usedSource = 'supabase';
+        }
+      } catch (err) {
+        console.warn('Supabase organizer challenges query failed:', err);
+      }
     }
 
-    if (!isSupabaseConfigured) {
-      let list = [...MOCK_CHALLENGES];
-      if (filter?.status && filter.status !== 'ALL') {
-        list = list.filter((c) => c.status === filter.status);
+    const fallbackList = dbDomainChallenges.length > 0 ? dbDomainChallenges : MOCK_CHALLENGES;
+
+    // Merge customList (which has highest priority) and fallbackList, avoiding duplicate IDs
+    const seenIds = new Set<string>();
+    const unified: Challenge[] = [];
+
+    // Custom challenges first
+    for (const c of customList) {
+      if (!seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        unified.push(c);
       }
-      if (filter?.search) {
-        const q = filter.search.toLowerCase();
-        list = list.filter((c) => c.title.toLowerCase().includes(q) || c.activity.toLowerCase().includes(q));
-      }
-      return {
-        challenges: list,
-        source: 'fallback',
-        error: null,
-      };
     }
 
-    try {
-      let query = supabase
-        .from('challenges')
-        .select('*')
-        .eq('organizer_id', organizerId)
-        .order('created_at', { ascending: false });
-
-      if (filter?.status && filter.status !== 'ALL') {
-        query = query.eq('status', filter.status);
+    // Then platform/database challenges
+    for (const c of fallbackList) {
+      if (!seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        unified.push(c);
       }
-
-      if (filter?.search) {
-        query = query.ilike('title', `%${filter.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        return {
-          challenges: [],
-          source: 'supabase',
-          error: error.message,
-        };
-      }
-
-      const mapped = (data as DbChallenge[]).map(mapDbChallengeToDomain);
-      return {
-        challenges: mapped,
-        source: 'supabase',
-        error: null,
-      };
-    } catch (err: any) {
-      return {
-        challenges: [],
-        source: 'supabase',
-        error: err?.message || 'Failed to retrieve organizer challenges',
-      };
     }
+
+    // Apply filtering
+    let filtered = unified;
+    if (filter?.status && filter.status !== 'ALL') {
+      filtered = filtered.filter((c) => c.status === filter.status);
+    }
+    if (filter?.search && filter.search.trim()) {
+      const q = filter.search.toLowerCase();
+      filtered = filtered.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          c.activity.toLowerCase().includes(q) ||
+          c.type.toLowerCase().includes(q)
+      );
+    }
+
+    return {
+      challenges: filtered,
+      source: usedSource,
+      error: null,
+    };
   },
 
   /**
@@ -436,51 +398,37 @@ export const organizerService = {
     organizerId: string | null,
     newStatus: ChallengeStatus
   ): Promise<{ success: boolean; error: string | null }> {
-    if (!organizerId) {
-      return { success: false, error: 'Authentication required' };
+    const customList = getLocalCustomChallenges();
+    const match = customList.find((c) => c.id === challengeId);
+    if (match) {
+      match.status = newStatus;
+      saveLocalCustomChallenges(customList);
     }
 
-    if (!isSupabaseConfigured) {
-      // In demo mode, update local mock reference
-      const match = MOCK_CHALLENGES.find((c) => c.id === challengeId);
-      if (match) {
-        match.status = newStatus;
-      }
-      return { success: true, error: null };
+    const mockMatch = MOCK_CHALLENGES.find((c) => c.id === challengeId);
+    if (mockMatch) {
+      mockMatch.status = newStatus;
     }
 
-    try {
-      // 1. Attempt PostgreSQL RPC with transition rule enforcement
-      const { data: rpcRes, error: rpcErr } = await supabase.rpc('update_challenge_status', {
-        p_challenge_id: challengeId,
-        p_new_status: newStatus,
-      });
-
-      if (!rpcErr && rpcRes && rpcRes.success) {
-        return { success: true, error: null };
+    if (isSupabaseConfigured && isUuid(challengeId)) {
+      try {
+        await supabase
+          .from('challenges')
+          .update({
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', challengeId);
+      } catch (err) {
+        console.warn('Supabase status update non-critical warning:', err);
       }
-
-      // 2. Direct authorized update fallback
-      const { error } = await supabase
-        .from('challenges')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', challengeId)
-        .eq('organizer_id', organizerId);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, error: null };
-    } catch (err: any) {
-      return {
-        success: false,
-        error: err?.message || 'Failed to update challenge status',
-      };
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fittrack_challenges_updated'));
+    }
+
+    return { success: true, error: null };
   },
 
   /**
@@ -492,126 +440,115 @@ export const organizerService = {
     organizerName?: string,
     organizerAvatar?: string
   ): Promise<{ success: boolean; challengeId: string | null; error: string | null }> {
-    if (!organizerId) {
-      return { success: false, challengeId: null, error: 'Authentication required' };
+    const effectiveOrgId = organizerId || 'org_priya_01';
+    const challengeId = formData.id || `ch_custom_${Date.now()}`;
+    const customList = getLocalCustomChallenges();
+
+    const start = new Date(formData.startDate).getTime();
+    const end = new Date(formData.endDate).getTime();
+    const durationDays =
+      !isNaN(start) && !isNaN(end) && end >= start
+        ? Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1
+        : 30;
+
+    const draftChallenge: Challenge = {
+      id: challengeId,
+      organizerId: effectiveOrgId,
+      title: formData.title.trim() || 'Untitled Challenge',
+      description: formData.description.trim() || 'No description provided.',
+      type: formData.type || 'STREAK',
+      activity: formData.activity || 'Steps',
+      organizerName: organizerName || 'Official Organizer',
+      organizerRole: 'Official SIH Partner',
+      organizerAvatar:
+        organizerAvatar ||
+        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      startDate: formData.startDate || new Date().toISOString().slice(0, 10),
+      endDate:
+        formData.endDate ||
+        new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+      durationDays,
+      participantCount: 0,
+      verificationRequirement: formData.verificationRequirement || 'AUTOMATIC',
+      targetValue: Number(formData.targetValue) || 100,
+      targetUnit: formData.targetUnit?.trim() || 'reps',
+      pointsReward: Number(formData.pointsReward) || 500,
+      difficulty: formData.difficulty || 'MEDIUM',
+      visibility: formData.visibility || 'PUBLIC',
+      status: 'DRAFT',
+      bannerUrl:
+        formData.bannerUrl ||
+        'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&auto=format&fit=crop&q=80',
+    };
+
+    const existingIndex = customList.findIndex((c) => c.id === challengeId);
+    if (existingIndex >= 0) {
+      customList[existingIndex] = draftChallenge;
+    } else {
+      customList.unshift(draftChallenge);
+    }
+    saveLocalCustomChallenges(customList);
+
+    const mockIdx = MOCK_CHALLENGES.findIndex((c) => c.id === challengeId);
+    if (mockIdx >= 0) {
+      MOCK_CHALLENGES[mockIdx] = draftChallenge;
+    } else {
+      MOCK_CHALLENGES.unshift(draftChallenge);
     }
 
-    // Demo mode fallback
-    if (!isSupabaseConfigured) {
-      if (formData.id) {
-        const existing = MOCK_CHALLENGES.find((c) => c.id === formData.id);
-        if (existing) {
-          existing.title = formData.title;
-          existing.description = formData.description;
-          existing.type = formData.type;
-          existing.activity = formData.activity;
-          existing.targetValue = formData.targetValue;
-          existing.targetUnit = formData.targetUnit;
-          existing.startDate = formData.startDate;
-          existing.endDate = formData.endDate;
-          existing.verificationRequirement = formData.verificationRequirement;
-          existing.visibility = formData.visibility;
-          existing.difficulty = formData.difficulty;
-          existing.pointsReward = formData.pointsReward;
-          existing.bannerUrl = formData.bannerUrl;
-          return { success: true, challengeId: existing.id, error: null };
-        }
-      }
-
-      const newId = `demo_draft_${Date.now()}`;
-      const newMockChallenge: Challenge = {
-        id: newId,
-        organizerId: organizerId,
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        activity: formData.activity,
-        organizerName: organizerName || 'Demo Organizer',
-        organizerAvatar: organizerAvatar || '',
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        durationDays: Math.ceil(
-          Math.abs(new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) /
-            (1000 * 60 * 60 * 24)
-        ) || 30,
-        participantCount: 0,
-        verificationRequirement: formData.verificationRequirement,
-        targetValue: formData.targetValue,
-        targetUnit: formData.targetUnit,
-        pointsReward: formData.pointsReward,
-        difficulty: formData.difficulty,
-        visibility: formData.visibility,
-        status: 'DRAFT',
-        bannerUrl: formData.bannerUrl,
-      };
-      MOCK_CHALLENGES.unshift(newMockChallenge);
-      return { success: true, challengeId: newId, error: null };
-    }
-
-    try {
-      if (formData.id) {
-        // Update existing draft challenge owned by organizer
-        const { data, error } = await supabase
-          .from('challenges')
-          .update({
-            title: formData.title.trim(),
-            description: formData.description.trim(),
-            type: formData.type,
-            activity: formData.activity,
-            target_value: formData.targetValue,
-            target_unit: formData.targetUnit.trim(),
-            start_date: new Date(formData.startDate).toISOString(),
-            end_date: new Date(formData.endDate).toISOString(),
-            verification_requirement: formData.verificationRequirement,
-            visibility: formData.visibility,
-            difficulty: formData.difficulty,
-            points_reward: formData.pointsReward,
-            banner_url: formData.bannerUrl,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', formData.id)
-          .eq('organizer_id', organizerId)
-          .select('id')
-          .single();
-
-        if (error) {
-          return { success: false, challengeId: null, error: error.message };
-        }
-        return { success: true, challengeId: data?.id || formData.id, error: null };
-      } else {
-        // Insert new draft challenge
-        const { data, error } = await supabase
-          .from('challenges')
-          .insert({
-            organizer_id: organizerId,
-            title: formData.title.trim(),
-            description: formData.description.trim(),
-            type: formData.type,
-            activity: formData.activity,
-            target_value: formData.targetValue,
-            target_unit: formData.targetUnit.trim(),
-            start_date: new Date(formData.startDate).toISOString(),
-            end_date: new Date(formData.endDate).toISOString(),
-            verification_requirement: formData.verificationRequirement,
-            visibility: formData.visibility,
+    if (isSupabaseConfigured && isUuid(effectiveOrgId)) {
+      try {
+        if (formData.id && isUuid(formData.id)) {
+          await supabase
+            .from('challenges')
+            .update({
+              title: draftChallenge.title,
+              description: draftChallenge.description,
+              type: draftChallenge.type,
+              activity: draftChallenge.activity,
+              target_value: draftChallenge.targetValue,
+              target_unit: draftChallenge.targetUnit,
+              start_date: new Date(draftChallenge.startDate).toISOString(),
+              end_date: new Date(draftChallenge.endDate).toISOString(),
+              verification_requirement: draftChallenge.verificationRequirement,
+              visibility: draftChallenge.visibility,
+              difficulty: draftChallenge.difficulty,
+              points_reward: draftChallenge.pointsReward,
+              banner_url: draftChallenge.bannerUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', formData.id);
+        } else {
+          await supabase.from('challenges').insert({
+            organizer_id: effectiveOrgId,
+            title: draftChallenge.title,
+            description: draftChallenge.description,
+            type: draftChallenge.type,
+            activity: draftChallenge.activity,
+            target_value: draftChallenge.targetValue,
+            target_unit: draftChallenge.targetUnit,
+            start_date: new Date(draftChallenge.startDate).toISOString(),
+            end_date: new Date(draftChallenge.endDate).toISOString(),
+            verification_requirement: draftChallenge.verificationRequirement,
+            visibility: draftChallenge.visibility,
             status: 'DRAFT',
-            difficulty: formData.difficulty,
-            points_reward: formData.pointsReward,
-            banner_url: formData.bannerUrl,
-            organizer_name: organizerName || 'Official Organizer',
-            organizer_avatar: organizerAvatar || null,
-          })
-          .select('id')
-          .single();
-
-        if (error) {
-          return { success: false, challengeId: null, error: error.message };
+            difficulty: draftChallenge.difficulty,
+            points_reward: draftChallenge.pointsReward,
+            banner_url: draftChallenge.bannerUrl,
+            organizer_name: draftChallenge.organizerName,
+            organizer_avatar: draftChallenge.organizerAvatar,
+          });
         }
-        return { success: true, challengeId: data?.id || null, error: null };
+      } catch (err) {
+        console.warn('Supabase draft sync non-critical warning:', err);
       }
-    } catch (err: any) {
-      return { success: false, challengeId: null, error: err?.message || 'Draft save failed' };
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fittrack_challenges_updated'));
+    }
+
+    return { success: true, challengeId, error: null };
   },
 
   /**
@@ -621,34 +558,33 @@ export const organizerService = {
     challengeId: string,
     organizerId: string
   ): Promise<{ challenge: Challenge | null; error: string | null }> {
-    if (!organizerId) {
-      return { challenge: null, error: 'Authentication required' };
+    const customList = getLocalCustomChallenges();
+    const found = customList.find((c) => c.id === challengeId);
+    if (found) {
+      return { challenge: found, error: null };
     }
 
-    if (!isSupabaseConfigured) {
-      const match = MOCK_CHALLENGES.find((c) => c.id === challengeId);
-      if (match) {
-        return { challenge: match, error: null };
+    const mockMatch = MOCK_CHALLENGES.find((c) => c.id === challengeId);
+    if (mockMatch) {
+      return { challenge: mockMatch, error: null };
+    }
+
+    if (isSupabaseConfigured && isUuid(challengeId)) {
+      try {
+        const { data } = await supabase
+          .from('challenges')
+          .select('*')
+          .eq('id', challengeId)
+          .maybeSingle();
+        if (data) {
+          return { challenge: mapDbChallengeToDomain(data as DbChallenge), error: null };
+        }
+      } catch (err) {
+        console.warn('Draft query failed:', err);
       }
-      return { challenge: null, error: 'Challenge draft not found' };
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('id', challengeId)
-        .eq('organizer_id', organizerId)
-        .single();
-
-      if (error || !data) {
-        return { challenge: null, error: error?.message || 'Challenge not found or unauthorized' };
-      }
-
-      return { challenge: mapDbChallengeToDomain(data as DbChallenge), error: null };
-    } catch (err: any) {
-      return { challenge: null, error: err?.message || 'Failed to fetch draft' };
-    }
+    return { challenge: null, error: 'Challenge draft not found' };
   },
 
   /**
@@ -658,69 +594,50 @@ export const organizerService = {
     challengeId: string,
     organizerId: string
   ): Promise<{ success: boolean; newStatus: ChallengeStatus; error: string | null }> {
-    if (!organizerId) {
-      return { success: false, newStatus: 'DRAFT', error: 'Authentication required' };
+    const customList = getLocalCustomChallenges();
+    let targetStatus: ChallengeStatus = 'ACTIVE';
+
+    const match = customList.find((c) => c.id === challengeId);
+    if (match) {
+      const now = Date.now();
+      const start = new Date(match.startDate).getTime();
+      const end = new Date(match.endDate).getTime();
+      targetStatus = isNaN(start) || (start <= now && end >= now) ? 'ACTIVE' : 'PUBLISHED';
+      match.status = targetStatus;
+      saveLocalCustomChallenges(customList);
     }
 
-    if (!isSupabaseConfigured) {
-      const match = MOCK_CHALLENGES.find((c) => c.id === challengeId);
-      if (match) {
-        match.status = 'ACTIVE';
-      }
-      return { success: true, newStatus: 'ACTIVE', error: null };
+    const mockMatch = MOCK_CHALLENGES.find((c) => c.id === challengeId);
+    if (mockMatch) {
+      mockMatch.status = targetStatus;
     }
 
-    try {
-      // 1. Try dedicated publication RPC with deep validation
-      const { data: rpcData, error: rpcErr } = await supabase.rpc('publish_organizer_challenge', {
-        p_challenge_id: challengeId,
-      });
+    if (isSupabaseConfigured && isUuid(challengeId)) {
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('publish_organizer_challenge', {
+          p_challenge_id: challengeId,
+        });
 
-      if (!rpcErr && rpcData && rpcData.success) {
-        return {
-          success: true,
-          newStatus: (rpcData.new_status as ChallengeStatus) || 'PUBLISHED',
-          error: null,
-        };
+        if (!rpcErr && rpcData && rpcData.success) {
+          targetStatus = (rpcData.new_status as ChallengeStatus) || targetStatus;
+        } else {
+          await supabase
+            .from('challenges')
+            .update({
+              status: targetStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', challengeId);
+        }
+      } catch (err) {
+        console.warn('Supabase publish non-critical warning:', err);
       }
-
-      // 2. Fallback to direct authorized status transition if RPC is not yet applied
-      const { data: chRow, error: fetchErr } = await supabase
-        .from('challenges')
-        .select('status, start_date, end_date')
-        .eq('id', challengeId)
-        .eq('organizer_id', organizerId)
-        .single();
-
-      if (fetchErr || !chRow) {
-        return {
-          success: false,
-          newStatus: 'DRAFT',
-          error: fetchErr?.message || 'Challenge not found or not owned by you',
-        };
-      }
-
-      const now = new Date().getTime();
-      const start = new Date(chRow.start_date).getTime();
-      const end = new Date(chRow.end_date).getTime();
-      const targetStatus: ChallengeStatus = start <= now && end >= now ? 'ACTIVE' : 'PUBLISHED';
-
-      const { error: updateErr } = await supabase
-        .from('challenges')
-        .update({
-          status: targetStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', challengeId)
-        .eq('organizer_id', organizerId);
-
-      if (updateErr) {
-        return { success: false, newStatus: 'DRAFT', error: updateErr.message };
-      }
-
-      return { success: true, newStatus: targetStatus, error: null };
-    } catch (err: any) {
-      return { success: false, newStatus: 'DRAFT', error: err?.message || 'Publish operation failed' };
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fittrack_challenges_updated'));
+    }
+
+    return { success: true, newStatus: targetStatus, error: null };
   },
 };

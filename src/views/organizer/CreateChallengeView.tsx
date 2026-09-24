@@ -249,6 +249,18 @@ export const CreateChallengeView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-center gap-3 pt-4 flex-wrap">
+            <button
+              onClick={() => navigate('/organizer')}
+              className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-xs font-bold text-white transition-colors shadow-md shadow-indigo-600/20 cursor-pointer"
+            >
+              <span>Organizer Overview</span>
+            </button>
+            <button
+              onClick={() => navigate('/organizer/challenges')}
+              className="flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer"
+            >
+              <span>Manage My Challenges</span>
+            </button>
             {createdChallengeId && (
               <button
                 onClick={() => navigate(`/challenges/${createdChallengeId}`)}
@@ -258,12 +270,6 @@ export const CreateChallengeView: React.FC = () => {
                 <span>View Challenge Details</span>
               </button>
             )}
-            <button
-              onClick={() => navigate('/organizer/challenges')}
-              className="flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer"
-            >
-              <span>Manage My Challenges</span>
-            </button>
           </div>
         </div>
       ) : (

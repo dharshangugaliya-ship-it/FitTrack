@@ -75,9 +75,9 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
           <img
             src={challenge.bannerUrl}
             alt={challenge.title}
-            className="h-full w-full object-cover opacity-75"
+            className="h-full w-full object-cover opacity-100 brightness-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#121722] via-[#121722]/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#121722]/85 via-transparent to-transparent pointer-events-none" />
 
           {/* Close Button */}
           <button

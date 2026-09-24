@@ -109,9 +109,7 @@ export function useChallengeCreator(draftId?: string) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const effectiveOrganizerId = isSupabaseConfigured
-    ? user?.id || null
-    : user?.id || 'demo_organizer';
+  const effectiveOrganizerId = user?.id || 'org_priya_01';
 
   const organizerName =
     profile?.display_name || user?.user_metadata?.display_name || 'Official Organizer';

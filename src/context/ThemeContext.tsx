@@ -62,18 +62,18 @@ export const THEMES: ThemeDefinition[] = [
   {
     id: 'motion',
     name: 'Motion',
-    tagline: 'Clean & Fresh',
+    tagline: 'Clean & Soothing',
     description:
-      'Light, approachable wellness theme built around white and soft-gray surfaces with fresh green, mint, and subtle cyan accents with soft shadows.',
+      'Calm, balanced wellness theme built with soft-gray and gentle neutral surfaces, soothing botanical green accents, and anti-glare contrast for comfortable viewing.',
     type: 'light',
     icon: Leaf,
-    accentColor: '#10B981',
+    accentColor: '#2D866B',
     palette: {
-      primary: '#10B981',
-      secondary: '#14B8A6',
-      bgPage: '#F4F6F9',
-      bgSurface: '#FFFFFF',
-      textPrimary: '#0F172A',
+      primary: '#2D866B',
+      secondary: '#479B8C',
+      bgPage: '#F8FAFC',
+      bgSurface: '#F1F5F9',
+      textPrimary: '#1E293B',
       border: '#E2E8F0',
     },
     preview: {

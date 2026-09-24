@@ -51,10 +51,10 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
         <img
           src={challenge.bannerUrl}
           alt={challenge.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-80"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-100 brightness-105"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121722] via-[#121722]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#121722]/80 via-transparent to-transparent pointer-events-none" />
 
         {/* Top Badges */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 flex-wrap">
